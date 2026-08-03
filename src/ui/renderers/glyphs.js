@@ -27,7 +27,7 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {drawBar, drawDot, drawRing, drawSpark, drawUnderline, parseColour} from './draw.js';
+import {drawBar, drawDot, drawRing, drawSpark, parseColour} from './draw.js';
 import {History} from './history.js';
 import {heatLevel} from './presets.js';
 
@@ -68,7 +68,7 @@ export const GlyphArea = GObject.registerClass(
 class GlyphArea extends St.DrawingArea {
     /**
      * @param {object} params - construction parameters
-     * @param {string} params.kind - dot, vbar, hbar, ring or spark
+     * @param {string} params.kind - dot, vbar, ring or spark
      * @param {string} params.metricId - used to pick the accent colour class
      * @param {number} [params.historyLength] - sparkline buffer size
      * @param {number} [params.graphWidth] - sparkline width in logical pixels
@@ -197,9 +197,6 @@ class GlyphArea extends St.DrawingArea {
                 break;
             case 'vbar':
                 drawBar(cr, geometry, colours, this._fraction);
-                break;
-            case 'hbar':
-                drawUnderline(cr, geometry, colours, this._fraction);
                 break;
             case 'ring':
                 drawRing(cr, geometry, colours, this._fraction);

@@ -4,10 +4,10 @@
  *
  * Style presets, as data.
  *
- * The nine presets are not nine renderers. They are nine named points in a
- * space of six orthogonal axes, and compose.js is the single renderer that
+ * The eight presets are not eight renderers. They are eight named points in a
+ * space of five orthogonal axes, and compose.js is the single renderer that
  * reads those axes. Complexity belongs in this table, never in code paths: if
- * adding a tenth preset ever requires touching anything but this file, the
+ * adding a ninth preset ever requires touching anything but this file, the
  * design has drifted and should be corrected rather than worked around.
  *
  * This module imports nothing at all. That is deliberate, and it is why the
@@ -28,14 +28,13 @@ export const AXES = {
     // Data: how much, trending where?
     glyph: {values: ['none', 'dot', 'vbar', 'ring', 'spark'], fallback: 'none'},
     value: {values: [true, false], fallback: true},
-    under: {values: [true, false], fallback: false},
 
     // Presentation.
     colour: {values: ['theme', 'heat', 'metric'], fallback: 'theme'},
 };
 
 /**
- * The nine shipped presets.
+ * The eight shipped presets.
  *
  * Every one carries an identity cue, an icon or a label. The four glyph presets
  * changed to icon: true for exactly that reason: a bare sparkline tells you
@@ -43,15 +42,14 @@ export const AXES = {
  * nobody has learned the positions yet.
  */
 export const PRESETS = Object.freeze({
-    'text': {icon: false, label: 'full', glyph: 'none', value: true, colour: 'theme', under: false},
-    'icon-text': {icon: true, label: 'none', glyph: 'none', value: true, colour: 'theme', under: false},
-    'abbreviated': {icon: false, label: 'short', glyph: 'none', value: true, colour: 'theme', under: false},
-    'colour-coded': {icon: false, label: 'full', glyph: 'none', value: true, colour: 'heat', under: false},
-    'dot': {icon: true, label: 'none', glyph: 'dot', value: true, colour: 'theme', under: false},
-    'sparkline': {icon: true, label: 'none', glyph: 'spark', value: true, colour: 'theme', under: false},
-    'bars': {icon: true, label: 'none', glyph: 'vbar', value: true, colour: 'theme', under: false},
-    'rings': {icon: true, label: 'none', glyph: 'ring', value: true, colour: 'theme', under: false},
-    'underline': {icon: false, label: 'full', glyph: 'none', value: true, colour: 'theme', under: true},
+    'text': {icon: false, label: 'full', glyph: 'none', value: true, colour: 'theme'},
+    'icon-text': {icon: true, label: 'none', glyph: 'none', value: true, colour: 'theme'},
+    'abbreviated': {icon: false, label: 'short', glyph: 'none', value: true, colour: 'theme'},
+    'colour-coded': {icon: false, label: 'full', glyph: 'none', value: true, colour: 'heat'},
+    'dot': {icon: true, label: 'none', glyph: 'dot', value: true, colour: 'theme'},
+    'sparkline': {icon: true, label: 'none', glyph: 'spark', value: true, colour: 'theme'},
+    'bars': {icon: true, label: 'none', glyph: 'vbar', value: true, colour: 'theme'},
+    'rings': {icon: true, label: 'none', glyph: 'ring', value: true, colour: 'theme'},
 });
 
 /** Used when a preset name is unknown, and when custom mode has nothing set. */
@@ -163,7 +161,21 @@ export function resolveStyle(styleName, customAxes = {}) {
     if (!customAxes || Object.keys(customAxes).length === 0)
         return {...PRESETS[DEFAULT_PRESET]};
 
-    return normaliseAxes(customAxes);
+    const axes = normaliseAxes(customAxes);
+
+    // Last line of defence against an invisible metric.
+    //
+    // The preferences window blocks this combination, but settings are not only
+    // written by the preferences window. dconf-editor, a gsettings command or a
+    // config synced from another machine can all put it there, and the result
+    // would be a metric that renders nothing at all while still being enabled,
+    // still being polled, and still occupying its reserved width. That reads as
+    // a crash rather than as a choice, so the value is forced back on here
+    // where every caller goes through.
+    if (isDegenerate(axes))
+        axes.value = true;
+
+    return axes;
 }
 
 /**

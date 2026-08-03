@@ -63,29 +63,6 @@ export function drawBar(cr, geometry, colours, fraction) {
 }
 
 /**
- * A full width progress bar, drawn beneath the text.
- *
- * @param {object} cr - Cairo context
- * @param {{width: number, height: number}} geometry - surface size
- * @param {{track: object, fill: object}} colours - RGBA colours
- * @param {number|null} fraction - 0 to 1, or null when unknown
- */
-export function drawUnderline(cr, geometry, colours, fraction) {
-    const {width, height} = geometry;
-
-    cr.rectangle(0, 0, width, height);
-    setColour(cr, colours.track);
-    cr.fill();
-
-    if (fraction === null || fraction <= 0)
-        return;
-
-    cr.rectangle(0, 0, width * fraction, height);
-    setColour(cr, colours.fill);
-    cr.fill();
-}
-
-/**
  * A ring gauge.
  *
  * @param {object} cr - Cairo context

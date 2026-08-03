@@ -4,8 +4,8 @@
  *
  * THE renderer.
  *
- * There is one of these, not nine. Every preset is a set of axis values that
- * this class reads, so adding a tenth preset is an entry in presets.js and
+ * There is one of these, not eight. Every preset is a set of axis values that
+ * this class reads, so adding a ninth preset is an entry in presets.js and
  * nothing else. If a change ever requires a branch in here keyed on a preset
  * name, the design has drifted and should be corrected rather than worked
  * around.
@@ -39,39 +39,13 @@ class MetricWidget extends St.BoxLayout {
         super._init({
             style_class: 'system-monitor-metric',
             y_align: Clutter.ActorAlign.CENTER,
-            // The underline variant stacks a progress bar beneath the row, so
-            // the outer box runs vertically in that case only.
-            orientation: axes.under
-                ? Clutter.Orientation.VERTICAL
-                : Clutter.Orientation.HORIZONTAL,
         });
 
         this._provider = provider;
         this._axes = axes;
-
-        // With an underline the parts live in their own row inside the vertical
-        // outer box. Without one the outer box is the row.
-        this._row = axes.under
-            ? new St.BoxLayout({
-                style_class: 'system-monitor-parts',
-                y_align: Clutter.ActorAlign.CENTER,
-            })
-            : this;
-
-        if (axes.under)
-            this.add_child(this._row);
+        this._row = this;
 
         this._buildParts(extensionPath, historyLength, graphWidth);
-
-        this._underline = null;
-        if (axes.under) {
-            this._underline = new GlyphArea({
-                kind: 'hbar',
-                metricId: provider.id,
-                x_expand: true,
-            });
-            this.add_child(this._underline);
-        }
     }
 
     /**
@@ -166,7 +140,6 @@ class MetricWidget extends St.BoxLayout {
         }
 
         this._glyph?.setValue({fraction, magnitude}, {useHeat});
-        this._underline?.setValue({fraction, magnitude}, {useHeat});
     }
 
     /**
@@ -229,7 +202,6 @@ class MetricWidget extends St.BoxLayout {
      */
     clearHistory() {
         this._glyph?.clearHistory();
-        this._underline?.clearHistory();
     }
 
     destroy() {
@@ -237,7 +209,6 @@ class MetricWidget extends St.BoxLayout {
         this._label = null;
         this._glyph = null;
         this._value = null;
-        this._underline = null;
         this._row = null;
         this._provider = null;
 

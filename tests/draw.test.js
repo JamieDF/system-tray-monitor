@@ -24,7 +24,6 @@ import {
     drawDot,
     drawRing,
     drawSpark,
-    drawUnderline,
     parseColour,
 } from '../src/ui/renderers/draw.js';
 import {assert, assertClose, assertEqual, suite, test} from './harness.js';
@@ -274,14 +273,6 @@ test('an all-gap series draws nothing', () => {
     assertEqual(painted, 0);
 });
 
-test('an underline fills proportionally', () => {
-    const quarter = opaquePixels(render(40, 4, (cr, g) => drawUnderline(cr, g, COLOURS, 0.25)));
-    const full = opaquePixels(render(40, 4, (cr, g) => drawUnderline(cr, g, COLOURS, 1)));
-
-    assert(full > quarter * 2, `expected proportional fill, got ${quarter} then ${full}`);
-    assertClose(quarter / full, 0.25, 0.1, 'roughly a quarter of the width');
-});
-
 test('every glyph survives a zero sized surface', () => {
     // Actors are allocated before they have a real size, and a repaint can land
     // in that window.
@@ -291,7 +282,6 @@ test('every glyph survives a zero sized surface', () => {
 
     drawDot(cr, geometry, COLOURS, 0.5);
     drawBar(cr, geometry, COLOURS, 0.5);
-    drawUnderline(cr, geometry, COLOURS, 0.5);
     drawRing(cr, geometry, COLOURS, 0.5);
     drawSpark(cr, geometry, COLOURS, [1, 2], {min: 1, max: 2});
 

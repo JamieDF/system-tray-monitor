@@ -24,8 +24,8 @@ import {assert, assertEqual, assertNull, suite, test} from './harness.js';
 
 suite('presets');
 
-test('there are nine presets', () => {
-    assertEqual(Object.keys(PRESETS).length, 9);
+test('there are eight presets', () => {
+    assertEqual(Object.keys(PRESETS).length, 8);
 });
 
 test('every preset sets every axis', () => {
@@ -106,8 +106,7 @@ test('booleans survive the trip through GSettings as strings', () => {
     assertEqual(resolveStyle('custom', {icon: 'false'}).icon, false);
     assertEqual(resolveStyle('custom', {icon: 'true'}).icon, true);
     assertEqual(resolveStyle('custom', {icon: 'TRUE'}).icon, true);
-    assertEqual(resolveStyle('custom', {value: 'false'}).value, false);
-    assertEqual(resolveStyle('custom', {under: 'true'}).under, true);
+    assertEqual(resolveStyle('custom', {icon: 'true', value: 'false'}).value, false);
 });
 
 test('real booleans work too', () => {
@@ -146,13 +145,13 @@ test('detects the combination that renders nothing', () => {
     // The preferences window must block this. An invisible indicator reads as
     // a crash rather than as a choice.
     assertEqual(isDegenerate({
-        icon: false, label: 'none', glyph: 'none', value: false, colour: 'theme', under: false,
+        icon: false, label: 'none', glyph: 'none', value: false, colour: 'theme',
     }), true);
 });
 
 test('anything visible is not degenerate', () => {
     const invisible = {
-        icon: false, label: 'none', glyph: 'none', value: false, colour: 'theme', under: false,
+        icon: false, label: 'none', glyph: 'none', value: false, colour: 'theme',
     };
     assertEqual(isDegenerate({...invisible, icon: true}), false, 'an icon is enough');
     assertEqual(isDegenerate({...invisible, label: 'short'}), false, 'a label is enough');
@@ -160,24 +159,16 @@ test('anything visible is not degenerate', () => {
     assertEqual(isDegenerate({...invisible, value: true}), false, 'a value is enough');
 });
 
-test('an underline alone still counts as degenerate', () => {
-    // The underline is drawn beneath the other parts. With nothing above it
-    // there is a 2px bar and no way to tell what it measures.
-    assertEqual(isDegenerate({
-        icon: false, label: 'none', glyph: 'none', value: false, colour: 'theme', under: true,
-    }), true);
-});
-
 test('detects a visible but unidentifiable combination', () => {
     // Allowed in custom mode for someone who knows the positions, never as a
     // shipped default.
     assertEqual(isUnidentifiable({
-        icon: false, label: 'none', glyph: 'spark', value: true, colour: 'theme', under: false,
+        icon: false, label: 'none', glyph: 'spark', value: true, colour: 'theme',
     }), true);
 });
 
 test('either identity cue is enough', () => {
-    const bare = {icon: false, label: 'none', glyph: 'spark', value: true, colour: 'theme', under: false};
+    const bare = {icon: false, label: 'none', glyph: 'spark', value: true, colour: 'theme'};
     assertEqual(isUnidentifiable({...bare, icon: true}), false);
     assertEqual(isUnidentifiable({...bare, label: 'short'}), false);
 });

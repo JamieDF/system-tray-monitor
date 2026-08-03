@@ -19,7 +19,6 @@
     <value nick="sparkline"    value="5"/>
     <value nick="bars"         value="6"/>
     <value nick="rings"        value="7"/>
-    <value nick="underline"    value="8"/>
     <value nick="custom"       value="9"/>
   </enum>
 
@@ -89,7 +88,7 @@
 
     <!--
       Per-metric custom axes. Read only when the matching -style key is 'custom'.
-      Recognised keys: icon, label, glyph, value, colour, under. An empty dict
+      Recognised keys: icon, label, glyph, value, colour. An empty dict
       falls back to the icon-text preset rather than rendering nothing.
     -->
     <key name="cpu-custom" type="a{ss}">
