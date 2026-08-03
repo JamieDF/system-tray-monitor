@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!--
+    Copyright (C) 2026 JamieDF
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    A memory module. Adwaita's nearest equivalent is a solid state drive, which
+    reads as storage rather than RAM. Symbolic convention: 16x16, single flat
+    fill, no strokes.
+
+    This comment must stay INSIDE the svg element. gdk-pixbuf picks a loader by
+    sniffing roughly the first 256 bytes of the file, so the opening svg tag has
+    to appear within them. A licence header above it eats that budget and the
+    file then fails to load as an image at all, while still being valid XML.
+    Measured on this system: the tag loads at byte offset 254 and fails at 258.
+  -->
+  <g fill="#2e3436">
+    <path d="M1 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3v-2h2v2h4v-2h2v2h3a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1Zm0 1h14v8h-2v-2H9v2H7v-2H3v2H1Z"/>
+    <path d="M3 6h2v3H3zm3 0h4v3H6zm5 0h2v3h-2z"/>
+  </g>
+</svg>

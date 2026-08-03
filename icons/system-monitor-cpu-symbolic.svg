@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!--
+    Copyright (C) 2026 JamieDF
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Adwaita ships no processor icon, so this is bundled rather than themed.
+    Symbolic convention: 16x16, single flat fill, no strokes, so the shell can
+    recolour it to match the panel foreground.
+
+    This comment must stay INSIDE the svg element. gdk-pixbuf picks a loader by
+    sniffing roughly the first 256 bytes of the file, so the opening svg tag has
+    to appear within them. A licence header above it eats that budget and the
+    file then fails to load as an image at all, while still being valid XML.
+    Measured on this system: the tag loads at byte offset 254 and fails at 258.
+  -->
+  <g fill="#2e3436">
+    <path d="M6 0v2H5a3 3 0 0 0-3 3v1H0v1h2v2H0v1h2v1a3 3 0 0 0 3 3h1v2h1v-2h2v2h1v-2h1a3 3 0 0 0 3-3v-1h2v-1h-2V7h2V6h-2V5a3 3 0 0 0-3-3h-1V0h-1v2H7V0Zm-1 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/>
+    <path d="M6 6h4v4H6z"/>
+  </g>
+</svg>

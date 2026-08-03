@@ -1,0 +1,114 @@
+/*
+ * Copyright (C) 2026 JamieDF
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Light variant. The panel is #fafafb here, near white.
+ *
+ * IMPORTANT: this is a COMPLETE copy of stylesheet.css with a different
+ * palette, not a set of overrides. The shell picks the first stylesheet it
+ * finds from stylesheet-<variant>.css then stylesheet.css and stops there, so
+ * when this file loads the dark one never does. Any selector added there must
+ * be added here too. tests/stylesheet.test.js fails the build if the two drift
+ * apart.
+ *
+ * The colours are the darker end of the GNOME palette rather than the lighter
+ * end used in the dark variant. The pale greens and oranges that read well on
+ * black are close to invisible on #fafafb, which is the whole reason this file
+ * exists.
+ */
+
+.system-monitor-box {
+    spacing: 9px;
+}
+
+.system-monitor-metric,
+.system-monitor-parts {
+    spacing: 4px;
+}
+
+/*
+ * A visible separator character supplies its own gap, so the generous spacing
+ * used between bare metrics would read as too loose alongside it.
+ */
+.system-monitor-box-tight {
+    spacing: 5px;
+}
+
+.system-monitor-separator {
+    color: rgba(0, 0, 0, 0.3);
+}
+
+/*
+ * Tabular figures. Without this the panel visibly jitters every tick as digit
+ * widths change under the numbers.
+ */
+.system-monitor-value {
+    font-feature-settings: "tnum";
+}
+
+.system-monitor-label {
+    font-feature-settings: "tnum";
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.system-monitor-icon {
+    icon-size: 1.09em;
+}
+
+/* Value tints, used by the per-metric colour axis. */
+.system-monitor-tint-cpu { color: #1c71d8; }
+.system-monitor-tint-memory { color: #2ec27e; }
+.system-monitor-tint-temperature { color: #e66100; }
+.system-monitor-tint-network { color: #9141ac; }
+.system-monitor-tint-disk { color: #1a5fb4; }
+
+/* Value tints, used by the heat mapped colour axis. */
+.system-monitor-heat-low { color: #2ec27e; }
+.system-monitor-heat-mid { color: #e66100; }
+.system-monitor-heat-high { color: #c01c28; }
+
+/*
+ * Glyph colours. Read in JavaScript via themeNode.lookup_color, never
+ * hardcoded in the drawing code.
+ */
+.system-monitor-glyph {
+    -system-monitor-track-color: rgba(0, 0, 0, 0.18);
+    -system-monitor-accent-color: #1c71d8;
+    -system-monitor-heat-low: #2ec27e;
+    -system-monitor-heat-mid: #e66100;
+    -system-monitor-heat-high: #c01c28;
+}
+
+.system-monitor-metric-cpu { -system-monitor-accent-color: #1c71d8; }
+.system-monitor-metric-memory { -system-monitor-accent-color: #2ec27e; }
+.system-monitor-metric-temperature { -system-monitor-accent-color: #e66100; }
+.system-monitor-metric-network { -system-monitor-accent-color: #9141ac; }
+.system-monitor-metric-disk { -system-monitor-accent-color: #1a5fb4; }
+
+/*
+ * Glyph sizes, in logical pixels. St scales these for HiDPI, and
+ * get_surface_size then reports the scaled figure to the drawing code.
+ */
+.system-monitor-glyph-dot {
+    width: 8px;
+    height: 8px;
+}
+
+.system-monitor-glyph-vbar {
+    width: 5px;
+    height: 15px;
+}
+
+.system-monitor-glyph-ring {
+    width: 18px;
+    height: 18px;
+}
+
+.system-monitor-glyph-spark {
+    width: 36px;
+    height: 14px;
+}
+
+.system-monitor-glyph-hbar {
+    height: 2px;
+}

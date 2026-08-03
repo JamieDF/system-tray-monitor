@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (C) 2026 JamieDF
+  SPDX-License-Identifier: GPL-2.0-or-later
+-->
+<schemalist gettext-domain="system-monitor">
+
+  <!--
+    Style presets. Each one is a named point in the six-axis space described in
+    docs/architecture.md, not a separate renderer. "custom" means read the
+    matching <metric>-custom key instead of a preset.
+  -->
+  <enum id="org.gnome.shell.extensions.system-monitor.style">
+    <value nick="text"         value="0"/>
+    <value nick="icon-text"    value="1"/>
+    <value nick="abbreviated"  value="2"/>
+    <value nick="colour-coded" value="3"/>
+    <value nick="dot"          value="4"/>
+    <value nick="sparkline"    value="5"/>
+    <value nick="bars"         value="6"/>
+    <value nick="rings"        value="7"/>
+    <value nick="underline"    value="8"/>
+    <value nick="custom"       value="9"/>
+  </enum>
+
+  <enum id="org.gnome.shell.extensions.system-monitor.separator">
+    <value nick="space" value="0"/>
+    <value nick="dot"   value="1"/>
+    <value nick="pipe"  value="2"/>
+  </enum>
+
+  <enum id="org.gnome.shell.extensions.system-monitor.rate-unit">
+    <value nick="bytes" value="0"/>
+    <value nick="bits"  value="1"/>
+  </enum>
+
+  <enum id="org.gnome.shell.extensions.system-monitor.temp-unit">
+    <value nick="celsius"    value="0"/>
+    <value nick="fahrenheit" value="1"/>
+  </enum>
+
+  <schema id="org.gnome.shell.extensions.system-monitor"
+          path="/org/gnome/shell/extensions/system-monitor/">
+
+    <key name="enabled-metrics" type="as">
+      <default>['cpu', 'memory', 'temperature', 'network', 'disk']</default>
+      <summary>Metrics shown in the panel</summary>
+      <description>
+        Ordered list of metric identifiers. Order here is the order they appear
+        in the panel. This list also decides what gets sampled: a metric that is
+        not listed is never polled, so removing one costs nothing at runtime.
+      </description>
+    </key>
+
+    <!--
+      Per-metric style. Defaults are mixed on purpose, matching the glyph to the
+      shape of the data: sparklines for rates, a ring for a fraction of a known
+      total, icon and text for an absolute reading with no ceiling.
+    -->
+    <key name="cpu-style" enum="org.gnome.shell.extensions.system-monitor.style">
+      <default>'sparkline'</default>
+      <summary>Display style for CPU</summary>
+      <description>Preset used to render the CPU metric, or custom to use cpu-custom.</description>
+    </key>
+
+    <key name="memory-style" enum="org.gnome.shell.extensions.system-monitor.style">
+      <default>'rings'</default>
+      <summary>Display style for memory</summary>
+      <description>Preset used to render the memory metric, or custom to use memory-custom.</description>
+    </key>
+
+    <key name="temperature-style" enum="org.gnome.shell.extensions.system-monitor.style">
+      <default>'icon-text'</default>
+      <summary>Display style for temperature</summary>
+      <description>Preset used to render the temperature metric, or custom to use temperature-custom.</description>
+    </key>
+
+    <key name="network-style" enum="org.gnome.shell.extensions.system-monitor.style">
+      <default>'sparkline'</default>
+      <summary>Display style for network</summary>
+      <description>Preset used to render the network metric, or custom to use network-custom.</description>
+    </key>
+
+    <key name="disk-style" enum="org.gnome.shell.extensions.system-monitor.style">
+      <default>'sparkline'</default>
+      <summary>Display style for disk</summary>
+      <description>Preset used to render the disk metric, or custom to use disk-custom.</description>
+    </key>
+
+    <!--
+      Per-metric custom axes. Read only when the matching -style key is 'custom'.
+      Recognised keys: icon, label, glyph, value, colour, under. An empty dict
+      falls back to the icon-text preset rather than rendering nothing.
+    -->
+    <key name="cpu-custom" type="a{ss}">
+      <default>{}</default>
+      <summary>Custom style axes for CPU</summary>
+      <description>Per-axis overrides used when cpu-style is custom.</description>
+    </key>
+
+    <key name="memory-custom" type="a{ss}">
+      <default>{}</default>
+      <summary>Custom style axes for memory</summary>
+      <description>Per-axis overrides used when memory-style is custom.</description>
+    </key>
+
+    <key name="temperature-custom" type="a{ss}">
+      <default>{}</default>
+      <summary>Custom style axes for temperature</summary>
+      <description>Per-axis overrides used when temperature-style is custom.</description>
+    </key>
+
+    <key name="network-custom" type="a{ss}">
+      <default>{}</default>
+      <summary>Custom style axes for network</summary>
+      <description>Per-axis overrides used when network-style is custom.</description>
+    </key>
+
+    <key name="disk-custom" type="a{ss}">
+      <default>{}</default>
+      <summary>Custom style axes for disk</summary>
+      <description>Per-axis overrides used when disk-style is custom.</description>
+    </key>
+
+    <!--
+      Global, not per metric: a separator sits between two metrics, so it belongs
+      to the group rather than to any one of them.
+    -->
+    <key name="separator" enum="org.gnome.shell.extensions.system-monitor.separator">
+      <default>'space'</default>
+      <summary>Separator drawn between metrics</summary>
+      <description>Character or spacing used between adjacent metrics in the panel.</description>
+    </key>
+
+    <key name="refresh-interval" type="i">
+      <range min="1" max="60"/>
+      <default>2</default>
+      <summary>Seconds between samples</summary>
+      <description>
+        Interval for the single shared timer. Lower values cost more wakeups,
+        which is the dominant power cost, not the arithmetic.
+      </description>
+    </key>
+
+    <key name="net-unit" enum="org.gnome.shell.extensions.system-monitor.rate-unit">
+      <default>'bytes'</default>
+      <summary>Network rate unit</summary>
+      <description>Whether network throughput is shown in bytes or bits per second.</description>
+    </key>
+
+    <key name="disk-unit" enum="org.gnome.shell.extensions.system-monitor.rate-unit">
+      <default>'bytes'</default>
+      <summary>Disk rate unit</summary>
+      <description>Whether disk throughput is shown in bytes or bits per second.</description>
+    </key>
+
+    <key name="temp-unit" enum="org.gnome.shell.extensions.system-monitor.temp-unit">
+      <default>'celsius'</default>
+      <summary>Temperature unit</summary>
+      <description>Whether temperatures are shown in Celsius or Fahrenheit.</description>
+    </key>
+
+    <key name="show-percent-sign" type="b">
+      <default>true</default>
+      <summary>Show the percent sign</summary>
+      <description>Append a percent sign to percentage values. Turning this off saves a little panel width.</description>
+    </key>
+
+    <key name="graph-width" type="i">
+      <range min="16" max="120"/>
+      <default>36</default>
+      <summary>Sparkline width in logical pixels</summary>
+      <description>Width of a sparkline before HiDPI scaling is applied.</description>
+    </key>
+
+    <key name="history-length" type="i">
+      <range min="8" max="120"/>
+      <default>20</default>
+      <summary>Samples retained per metric</summary>
+      <description>
+        Length of the ring buffer backing each sparkline. Bounded deliberately:
+        this buffer is allocated on enable and released on disable, and must not
+        grow over time.
+      </description>
+    </key>
+
+  </schema>
+</schemalist>

@@ -1,0 +1,113 @@
+/*
+ * Copyright (C) 2026 JamieDF
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Dark variant, and the fallback for any theme without a light stylesheet.
+ * The panel is #000000 here.
+ *
+ * IMPORTANT: stylesheet-light.css is a COMPLETE copy of this file with a
+ * different palette, not a set of overrides. The shell picks the first
+ * stylesheet it finds from stylesheet-<variant>.css then stylesheet.css and
+ * stops there, so a light session never loads this file at all. Any selector
+ * added here must be added there too. tests/stylesheet.test.js fails the build
+ * if the two drift apart.
+ *
+ * The custom properties below are read from JavaScript through the theme node,
+ * because Cairo has no idea this stylesheet exists. See src/ui/renderers/glyphs.js.
+ */
+
+.system-monitor-box {
+    spacing: 9px;
+}
+
+.system-monitor-metric,
+.system-monitor-parts {
+    spacing: 4px;
+}
+
+/*
+ * A visible separator character supplies its own gap, so the generous spacing
+ * used between bare metrics would read as too loose alongside it.
+ */
+.system-monitor-box-tight {
+    spacing: 5px;
+}
+
+.system-monitor-separator {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/*
+ * Tabular figures. Without this the panel visibly jitters every tick as digit
+ * widths change under the numbers.
+ */
+.system-monitor-value {
+    font-feature-settings: "tnum";
+}
+
+.system-monitor-label {
+    font-feature-settings: "tnum";
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.system-monitor-icon {
+    icon-size: 1.09em;
+}
+
+/* Value tints, used by the per-metric colour axis. */
+.system-monitor-tint-cpu { color: #78aeed; }
+.system-monitor-tint-memory { color: #8ff0a4; }
+.system-monitor-tint-temperature { color: #ffbe6f; }
+.system-monitor-tint-network { color: #dc8add; }
+.system-monitor-tint-disk { color: #99c1f1; }
+
+/* Value tints, used by the heat mapped colour axis. */
+.system-monitor-heat-low { color: #8ff0a4; }
+.system-monitor-heat-mid { color: #ffbe6f; }
+.system-monitor-heat-high { color: #f66151; }
+
+/*
+ * Glyph colours. Read in JavaScript via themeNode.lookup_color, never
+ * hardcoded in the drawing code.
+ */
+.system-monitor-glyph {
+    -system-monitor-track-color: rgba(255, 255, 255, 0.22);
+    -system-monitor-accent-color: #78aeed;
+    -system-monitor-heat-low: #8ff0a4;
+    -system-monitor-heat-mid: #ffbe6f;
+    -system-monitor-heat-high: #f66151;
+}
+
+.system-monitor-metric-cpu { -system-monitor-accent-color: #78aeed; }
+.system-monitor-metric-memory { -system-monitor-accent-color: #8ff0a4; }
+.system-monitor-metric-temperature { -system-monitor-accent-color: #ffbe6f; }
+.system-monitor-metric-network { -system-monitor-accent-color: #dc8add; }
+.system-monitor-metric-disk { -system-monitor-accent-color: #99c1f1; }
+
+/*
+ * Glyph sizes, in logical pixels. St scales these for HiDPI, and
+ * get_surface_size then reports the scaled figure to the drawing code.
+ */
+.system-monitor-glyph-dot {
+    width: 8px;
+    height: 8px;
+}
+
+.system-monitor-glyph-vbar {
+    width: 5px;
+    height: 15px;
+}
+
+.system-monitor-glyph-ring {
+    width: 18px;
+    height: 18px;
+}
+
+.system-monitor-glyph-spark {
+    width: 36px;
+    height: 14px;
+}
+
+.system-monitor-glyph-hbar {
+    height: 2px;
+}

@@ -1,0 +1,44 @@
+# Copyright (C) 2026 JamieDF
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Tests and schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The metrics layer imports GLib and nothing else, which is what lets it
+      # run here with no display server. librsvg2-common supplies the gdk-pixbuf
+      # SVG loader that the bundled icon test needs.
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            gjs \
+            libglib2.0-bin \
+            gir1.2-glib-2.0 \
+            gir1.2-gdkpixbuf-2.0 \
+            librsvg2-common
+
+      - name: Run tests
+        run: gjs -m tests/run.js
+
+      # --strict turns warnings into errors, so a malformed key or a bad enum
+      # nick fails the build rather than shipping and failing at runtime.
+      - name: Compile settings schema
+        run: glib-compile-schemas --strict --dry-run schemas/
+
+      - name: Check metadata.json is valid JSON
+        run: python3 -c "import json; json.load(open('metadata.json'))"
+
+  # A lint job is added once the ESLint config lands. Packaging via
+  # `gnome-extensions pack` needs the full gnome-shell package, so it is
+  # deferred until there is a release bundle worth building.
