@@ -109,9 +109,23 @@ export class MemoryProvider {
         return 'memory';
     }
 
-    /** @returns {string} human readable name */
+    /**
+     * Short form for the panel, where width is scarce.
+     *
+     * @returns {string} abbreviated name
+     */
     get label() {
         return 'RAM';
+    }
+
+    /**
+     * Full form for the preferences window, where there is room and clarity
+     * matters more than width.
+     *
+     * @returns {string} human readable name
+     */
+    get name() {
+        return 'Memory';
     }
 
     /**
