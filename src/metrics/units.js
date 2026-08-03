@@ -56,7 +56,13 @@ export function formatGibibytes(bytes, options = {}) {
     if (bytes === null || bytes === undefined || !Number.isFinite(bytes))
         return withUnit ? `${UNKNOWN}GiB` : UNKNOWN;
 
-    const value = (bytes / BYTES_PER_GIB).toFixed(decimals);
+    // Same three significant digit rule as throughput, so a workstation with
+    // 128 GiB reads "128GiB" rather than "128.0GiB" and stays inside the width
+    // reserved for this metric. The caller can still ask for more precision.
+    const scaled = bytes / BYTES_PER_GIB;
+    const places = decimals === 1 ? fixedWidthDecimals(scaled, 100) : decimals;
+
+    const value = scaled.toFixed(places);
     return withUnit ? `${value}GiB` : `${value}`;
 }
 
@@ -101,8 +107,41 @@ export function kibToBytes(kib) {
  * being measured differ.
  */
 const RATE_STEP = 1000;
-const BYTE_UNITS = ['B/s', 'kB/s', 'MB/s', 'GB/s'];
-const BIT_UNITS = ['b/s', 'kb/s', 'Mb/s', 'Gb/s'];
+
+/*
+ * The tables run to terabytes deliberately.
+ *
+ * Nothing on a desktop reaches it, but a table that runs out stops scaling and
+ * starts growing digits instead: at gigabits the ceiling, a fast link reads
+ * "2640Gb/s", which is eight characters and overflows the width reserved for
+ * the metric. One extra tier moves that failure to petabytes per second.
+ */
+const BYTE_UNITS = ['B/s', 'kB/s', 'MB/s', 'GB/s', 'TB/s'];
+const BIT_UNITS = ['b/s', 'kb/s', 'Mb/s', 'Gb/s', 'Tb/s'];
+
+/**
+ * Chooses decimal places so the rendered string stays a fixed maximum width.
+ *
+ * The panel reserves a fixed width per metric, so the widest possible output
+ * costs that space permanently. Keeping three significant digits caps the
+ * width without losing precision where it matters: a fraction below the
+ * threshold is real information, above it is noise.
+ *
+ * The rounding check is the subtle part and is not optional. Deciding on the
+ * raw value alone means 9.99 takes the one decimal branch and then renders as
+ * "10.0", which is exactly the extra character the reservation was sized to
+ * exclude.
+ *
+ * @param {number} value - the already scaled value
+ * @param {number} threshold - at or above this, drop the fraction
+ * @returns {number} decimal places to render
+ */
+function fixedWidthDecimals(value, threshold) {
+    if (value >= threshold)
+        return 0;
+
+    return Number(value.toFixed(1)) >= threshold ? 0 : 1;
+}
 
 /**
  * Formats a throughput figure, scaling to a sensible unit.
@@ -128,9 +167,12 @@ export function formatRate(bytesPerSecond, options = {}) {
         index++;
     }
 
-    // Below a megabyte the fractional part is noise, and it costs panel width
-    // that has to be reserved permanently.
-    const decimals = index >= 2 ? 1 : 0;
+    // Three significant digits, never more. "888.8MB/s" is 71px where
+    // "888MB/s" is 54px, and the tenth of a megabyte told nobody anything.
+    //
+    // Plain bytes per second get no fraction at all, since a tenth of a byte
+    // per second is not a meaningful quantity.
+    const decimals = index === 0 ? 0 : fixedWidthDecimals(value, 10);
 
     return `${value.toFixed(decimals)}${units[index]}`;
 }

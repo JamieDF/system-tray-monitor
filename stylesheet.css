@@ -50,6 +50,31 @@
     color: rgba(255, 255, 255, 0.6);
 }
 
+/*
+ * Reserved width per metric, so a value getting shorter does not drag
+ * everything after it leftward.
+ *
+ * tnum above stops digits changing width (1 against 8). It does nothing about
+ * the number of characters, and "3MB/s" against "124MB/s" is a 29px jump that
+ * shoves every metric to its right.
+ *
+ * These are measured, not guessed: every value the formatters can produce was
+ * swept through Pango at Ubuntu Sans Bold 11 and the widest taken, plus a
+ * little headroom for wider fonts. min-width does not clip, so a font wider
+ * than the headroom simply reintroduces a little movement rather than cutting
+ * text off.
+ *
+ *   cpu          "100%"      2.52em
+ *   memory       "10.0GiB"   3.54em
+ *   temperature  "100°C"     2.59em
+ *   network/disk "100MB/s"   4.02em
+ */
+.system-monitor-value-cpu { min-width: 2.7em; }
+.system-monitor-value-memory { min-width: 3.7em; }
+.system-monitor-value-temperature { min-width: 2.8em; }
+.system-monitor-value-network { min-width: 4.2em; }
+.system-monitor-value-disk { min-width: 4.2em; }
+
 .system-monitor-icon {
     icon-size: 1.09em;
 }

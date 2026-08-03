@@ -121,8 +121,13 @@ class MetricWidget extends St.BoxLayout {
         if (value) {
             this._value = new St.Label({
                 text: this._provider.format(null, {}),
-                style_class: 'system-monitor-value',
+                style_class: this._valueClass(),
                 y_align: Clutter.ActorAlign.CENTER,
+                // Left aligned inside its reserved width, so the number stays
+                // visually attached to the icon or glyph it belongs to. The
+                // slack appears before the next metric instead of between this
+                // metric's own parts.
+                x_align: Clutter.ActorAlign.START,
             });
             this._row.add_child(this._value);
         }
@@ -165,6 +170,34 @@ class MetricWidget extends St.BoxLayout {
     }
 
     /**
+     * Builds the value label's class list.
+     *
+     * The per-metric class carries the reserved width and must survive every
+     * colour change. Rebuilding the whole list from parts is what stops a
+     * colour update quietly dropping it and bringing the jitter back.
+     *
+     * @param {number|null} [fraction] - current load from 0 to 1
+     * @returns {string} space separated class list
+     */
+    _valueClass(fraction = null) {
+        const classes = [
+            'system-monitor-value',
+            `system-monitor-value-${this._provider.id}`,
+        ];
+
+        const {colour} = this._axes;
+        if (colour === 'metric') {
+            classes.push(`system-monitor-tint-${this._provider.id}`);
+        } else if (colour === 'heat') {
+            const band = fraction === null ? null : heatLevel(fraction * 100);
+            if (band !== null)
+                classes.push(`system-monitor-heat-${band}`);
+        }
+
+        return classes.join(' ');
+    }
+
+    /**
      * Colours the value text according to the colour axis.
      *
      * Done with style classes rather than inline colours so the actual values
@@ -173,17 +206,7 @@ class MetricWidget extends St.BoxLayout {
      * @param {number|null} fraction - current load from 0 to 1
      */
     _applyValueColour(fraction) {
-        const {colour} = this._axes;
-
-        let suffix = '';
-        if (colour === 'metric') {
-            suffix = ` system-monitor-tint-${this._provider.id}`;
-        } else if (colour === 'heat') {
-            const band = fraction === null ? null : heatLevel(fraction * 100);
-            suffix = band === null ? '' : ` system-monitor-heat-${band}`;
-        }
-
-        const wanted = `system-monitor-value${suffix}`;
+        const wanted = this._valueClass(fraction);
 
         // Setting style_class re-runs the CSS cascade for this actor, so only
         // do it when the class actually changes.
