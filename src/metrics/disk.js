@@ -38,17 +38,21 @@ const VIRTUAL_PREFIXES = ['loop', 'ram', 'zram', 'dm-', 'md'];
  * partitions, which is what stops nvme0n1p1 and nvme0n1p2 being added on top of
  * nvme0n1. But it does list loop and ram devices, so those are filtered by name.
  *
+ * The sysBlock root is injectable so tests can point at a fixture rather than
+ * the host's real /sys/block, which would otherwise make them machine-specific.
+ *
  * @param {string} name - device name from /proc/diskstats
+ * @param {string} [sysBlock=SYS_BLOCK] - root to test against, normally /sys/block
  * @returns {boolean} true if this is a real whole disk
  */
-export function isPhysicalDisk(name) {
+export function isPhysicalDisk(name, sysBlock = SYS_BLOCK) {
     if (typeof name !== 'string' || name.length === 0)
         return false;
 
     if (VIRTUAL_PREFIXES.some(prefix => name.startsWith(prefix)))
         return false;
 
-    return canRead(`${SYS_BLOCK}/${name}`);
+    return canRead(`${sysBlock}/${name}`);
 }
 
 /**

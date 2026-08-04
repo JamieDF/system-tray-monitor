@@ -11,6 +11,11 @@ suite('disk');
 
 const fixture = readLines(fixturePath('proc-diskstats.txt'));
 
+// A fake /sys/block containing only nvme0n1. Pointing isPhysicalDisk here
+// instead of at the host's real /sys/block keeps these tests hermetic: they
+// pass on a machine with nvme0n1 and on a CI runner whose only disk is sda.
+const sysBlock = fixturePath('sys/block');
+
 test('fixture loads', () => {
     assert(fixture !== null, 'proc-diskstats.txt fixture should be readable');
 });
@@ -59,8 +64,9 @@ test('loop and other virtual devices are excluded', () => {
 test('partitions are excluded so the whole disk is not double counted', () => {
     // /sys/block lists whole disks only. Without this check nvme0n1p1 and
     // nvme0n1p2 would be added on top of nvme0n1, roughly doubling the figure.
-    assertEqual(isPhysicalDisk('nvme0n1p1'), false);
-    assertEqual(isPhysicalDisk('nvme0n1'), true, 'the whole disk should count');
+    // The fake sysBlock has nvme0n1 but not nvme0n1p1, modelling a real /sys/block.
+    assertEqual(isPhysicalDisk('nvme0n1p1', sysBlock), false);
+    assertEqual(isPhysicalDisk('nvme0n1', sysBlock), true, 'the whole disk should count');
 });
 
 test('rejects malformed names', () => {
@@ -91,7 +97,7 @@ test('total of nothing is zero, not NaN', () => {
 });
 
 test('the real fixture yields a nonzero physical total', () => {
-    const total = totalPhysical(parseDiskstats(fixture));
+    const total = totalPhysical(parseDiskstats(fixture), name => isPhysicalDisk(name, sysBlock));
     assert(total.readBytes > 0, 'this machine has read from disk');
 });
 
