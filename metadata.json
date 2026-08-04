@@ -5,6 +5,5 @@
     "shell-version": ["48", "49", "50"],
     "url": "https://github.com/JamieDF/system-tray-monitor",
     "settings-schema": "org.gnome.shell.extensions.system-tray-monitor",
-    "gettext-domain": "system-tray-monitor",
-    "version": 1
+    "gettext-domain": "system-tray-monitor"
 }

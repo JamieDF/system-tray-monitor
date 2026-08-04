@@ -188,11 +188,25 @@ export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
             orderRow = this._orderStrip(settings, providers, rebuild);
             orderGroup.add(orderRow);
 
+            // Remember which row was expanded so it can be restored after the
+            // rebuild. Without this, changing a metric's style recreates the row
+            // from scratch and it snaps shut — frustrating when you are mid-edit
+            // and the axis rows you were about to tweak just disappeared. Tracked
+            // by provider id because the row object itself is destroyed below.
+            const expandedIds = new Set(shown
+                .filter(row => row.expanded)
+                .map(row => row.providerId));
+
             for (const row of shown)
                 group.remove(row);
 
             shown = this._orderedProviders(settings, providers)
-                .map(provider => this._metricRow(settings, provider, rebuild));
+                .map(provider => {
+                    const row = this._metricRow(settings, provider, rebuild);
+                    if (expandedIds.has(provider.id))
+                        row.expanded = true;
+                    return row;
+                });
 
             for (const row of shown)
                 group.add(row);
@@ -344,7 +358,12 @@ export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
         target.connect('drop', (_target, value) => {
             chip.remove_css_class('suggested-action');
 
-            const dragged = value.get_string();
+            // GJS unwraps the GValue into a plain JS string before passing it
+            // here, so value is already the metric id. Calling .get_string() on
+            // it returns undefined (strings have no such method), the falsy
+            // guard bails out, and the drop silently does nothing — which is
+            // exactly the symptom of "drag works but release doesn't reorder".
+            const dragged = typeof value === 'string' ? value : value?.get_string?.();
             if (!dragged || dragged === metricId)
                 return false;
 
@@ -460,6 +479,11 @@ export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
             subtitle: this._rowSubtitle(provider, style, isEnabled, available),
             sensitive: available,
         });
+
+        // Tagged so rebuild() can remember which row was expanded and restore
+        // it after recreating the list. Without this identifier there is no way
+        // to match an old (about-to-be-destroyed) row to its replacement.
+        row.providerId = provider.id;
 
         row.add_prefix(new Gtk.Image({gicon: resolveIcon(this.path, provider.iconName)}));
 
