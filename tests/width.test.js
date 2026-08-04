@@ -132,7 +132,7 @@ test('every reserved width is declared for every metric', () => {
     const [self] = GLib.filename_from_uri(import.meta.url);
     const root = GLib.path_get_dirname(GLib.path_get_dirname(self));
 
-    for (const sheet of ['stylesheet.css', 'stylesheet-light.css']) {
+    for (const sheet of ['stylesheet.css']) {
         const [ok, bytes] = GLib.file_get_contents(
             GLib.build_filenamev([root, sheet]));
         assert(ok, `${sheet} should be readable`);

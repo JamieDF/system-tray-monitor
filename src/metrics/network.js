@@ -243,6 +243,28 @@ export class NetworkProvider {
     }
 
     /**
+     * Receive and transmit separately, for the dropdown.
+     *
+     * The panel shows the sum, which answers "is the network busy?". This
+     * answers "busy which way?", which the sum cannot.
+     *
+     * @param {object|null} sample - reading from sample()
+     * @param {object} [options] - formatting options
+     * @returns {Array<{label: string, text: string, fraction: number|null}>} detail rows
+     */
+    detail(sample, options = {}) {
+        if (!sample)
+            return [];
+
+        const asBits = options.netAsBits ?? false;
+
+        return [
+            {label: 'Down', text: formatRate(sample.rxRate, {asBits}), fraction: null},
+            {label: 'Up', text: formatRate(sample.txRate, {asBits}), fraction: null},
+        ];
+    }
+
+    /**
      * Drops both baselines so the next sample starts fresh.
      */
     reset() {

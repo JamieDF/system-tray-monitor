@@ -8,6 +8,7 @@
  */
 
 import {readLines} from './procfs.js';
+import {formatPercent} from './units.js';
 
 const STAT_PATH = '/proc/stat';
 
@@ -157,6 +158,12 @@ export function usageBetween(prev, curr) {
 export class CpuProvider {
     constructor() {
         this._previous = null;
+
+        // Per-core baselines, held separately because per-core lines are only
+        // parsed while the dropdown is open. Keeping them out of sample() is
+        // what stops eight extra lines being parsed every tick forever to
+        // serve a menu nobody has opened.
+        this._previousCores = [];
     }
 
     /** @returns {string} stable identifier used in settings keys */
@@ -258,7 +265,47 @@ export class CpuProvider {
     /**
      * Drops the baseline so the next sample starts fresh.
      */
+    /**
+     * Per-core utilisation, for the dropdown.
+     *
+     * Reads /proc/stat a second time rather than having sample() carry the
+     * per-core lines around. That costs one extra read per tick, but only while
+     * the menu is actually open, which is the cheaper trade for a file this
+     * small.
+     *
+     * @returns {Array<{label: string, text: string, fraction: number|null}>} one row per core
+     */
+    detail() {
+        const cores = parsePerCore(readLines(STAT_PATH));
+
+        const rows = cores.map((core, index) => {
+            const percent = usageBetween(this._previousCores[index] ?? null, core);
+
+            return {
+                label: `Core ${index}`,
+                text: formatPercent(percent),
+                fraction: percent === null ? null : percent / 100,
+            };
+        });
+
+        this._previousCores = cores;
+
+        return rows;
+    }
+
+    /**
+     * Drops only the per-core baselines.
+     *
+     * Called when the dropdown closes. The aggregate baseline is deliberately
+     * left alone: the panel is still running and would otherwise show a
+     * placeholder for a tick every time the menu was dismissed.
+     */
+    resetDetail() {
+        this._previousCores = [];
+    }
+
     reset() {
         this._previous = null;
+        this._previousCores = [];
     }
 }

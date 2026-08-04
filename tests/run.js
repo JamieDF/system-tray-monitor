@@ -29,6 +29,7 @@ import './history.test.js';
 import './stylesheet.test.js';
 import './draw.test.js';
 import './width.test.js';
+import './detail.test.js';
 import './poller.test.js';
 
 import {report} from './harness.js';

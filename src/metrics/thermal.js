@@ -242,6 +242,28 @@ export class ThermalProvider {
     }
 
     /**
+     * Which sensor is being read, for the dropdown.
+     *
+     * Naming the driver matters more than it looks. A machine can expose half a
+     * dozen temperatures, and "which one is this?" is the first question a
+     * number without context invites.
+     *
+     * @param {object|null} sample - reading from sample()
+     * @param {object} [options] - formatting options
+     * @returns {Array<{label: string, text: string, fraction: number|null}>} detail rows
+     */
+    detail(sample, options = {}) {
+        if (!sample || sample.sensor === null)
+            return [];
+
+        return [{
+            label: sample.sensor,
+            text: formatTemperature(sample.celsius, {unit: options.tempUnit ?? 'celsius'}),
+            fraction: temperatureFraction(sample.celsius),
+        }];
+    }
+
+    /**
      * Stateless, present so every provider has the same shape.
      */
     reset() {

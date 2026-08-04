@@ -17,6 +17,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {createActiveProviders} from './src/metrics/registry.js';
 import {Poller} from './src/poller.js';
+import {MetricMenu} from './src/ui/menu.js';
 import {MetricWidget} from './src/ui/renderers/compose.js';
 import {resolveStyle} from './src/ui/renderers/presets.js';
 
@@ -38,7 +39,10 @@ class SystemMonitorIndicator extends PanelMenu.Button {
      * @param {number} params.graphWidth - sparkline width in logical pixels
      */
     _init(params) {
-        const {metrics, extensionPath, separator, historyLength, graphWidth} = params;
+        const {
+            metrics, extensionPath, separator, historyLength, graphWidth,
+            onOpenPreferences, onMenuOpened,
+        } = params;
 
         super._init(0.5, 'System Monitor', false);
 
@@ -74,6 +78,13 @@ class SystemMonitorIndicator extends PanelMenu.Button {
             this._widgets.set(provider.id, widget);
             this._box.add_child(widget);
         });
+
+        this._menu = new MetricMenu(
+            this.menu,
+            metrics.map(m => m.provider),
+            extensionPath,
+            onOpenPreferences,
+            onMenuOpened);
     }
 
     /**
@@ -87,6 +98,9 @@ class SystemMonitorIndicator extends PanelMenu.Button {
             if (readings.has(id))
                 widget.update(readings.get(id), options);
         }
+
+        // Returns immediately unless the dropdown is actually open.
+        this._menu.update(readings, options);
     }
 
     /**
@@ -107,6 +121,9 @@ class SystemMonitorIndicator extends PanelMenu.Button {
     }
 
     destroy() {
+        this._menu?.destroy();
+        this._menu = null;
+
         this._widgets?.clear();
         this._widgets = null;
         this._box = null;
@@ -228,6 +245,8 @@ export default class SystemMonitorExtension extends Extension {
             separator: this._settings.get_string('separator'),
             historyLength: this._settings.get_int('history-length'),
             graphWidth: this._settings.get_int('graph-width'),
+            onOpenPreferences: () => this.openPreferences(),
+            onMenuOpened: () => this._poller.refresh(),
         });
 
         Main.panel.addToStatusArea(this.uuid, this._indicator, 0, 'right');

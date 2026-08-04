@@ -238,6 +238,25 @@ export class DiskProvider {
     }
 
     /**
+     * Reads and writes separately, for the dropdown.
+     *
+     * @param {object|null} sample - reading from sample()
+     * @param {object} [options] - formatting options
+     * @returns {Array<{label: string, text: string, fraction: number|null}>} detail rows
+     */
+    detail(sample, options = {}) {
+        if (!sample)
+            return [];
+
+        const asBits = options.diskAsBits ?? false;
+
+        return [
+            {label: 'Read', text: formatRate(sample.readRate, {asBits}), fraction: null},
+            {label: 'Write', text: formatRate(sample.writeRate, {asBits}), fraction: null},
+        ];
+    }
+
+    /**
      * Drops both baselines so the next sample starts fresh.
      */
     reset() {

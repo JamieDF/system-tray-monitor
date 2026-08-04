@@ -2,15 +2,23 @@
  * Copyright (C) 2026 JamieDF
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Dark variant, and the fallback for any theme without a light stylesheet.
- * The panel is #000000 here.
+ * The only stylesheet. There is deliberately no light variant.
  *
- * IMPORTANT: stylesheet-light.css is a COMPLETE copy of this file with a
- * different palette, not a set of overrides. The shell picks the first
- * stylesheet it finds from stylesheet-<variant>.css then stylesheet.css and
- * stops there, so a light session never loads this file at all. Any selector
- * added here must be added there too. tests/stylesheet.test.js fails the build
- * if the two drift apart.
+ * The shell picks stylesheet-<variant>.css from the colour-scheme setting, and
+ * on Ubuntu that does not reliably describe what the panel actually renders as:
+ * a session reporting "light" can have a black panel. A per-variant palette is
+ * therefore a coin flip, and losing it means drawing dark on dark, which is
+ * invisible rather than merely ugly.
+ *
+ * Two rules keep this single sheet correct on any background:
+ *
+ *   1. Text that should be muted sets no colour at all. It inherits whatever
+ *      foreground the theme chose and is dimmed with opacity, which cannot be
+ *      wrong because the theme already picked something that contrasts with its
+ *      own background.
+ *   2. Colours that must be specific, the per-metric accents, are mid-tones
+ *      chosen to clear a 3:1 contrast ratio against both #000000 and #fafafb.
+ *      tests/stylesheet.test.js measures this and fails the build otherwise.
  *
  * The custom properties below are read from JavaScript through the theme node,
  * because Cairo has no idea this stylesheet exists. See src/ui/renderers/glyphs.js.
@@ -33,10 +41,6 @@
     spacing: 3px;
 }
 
-.system-monitor-separator {
-    color: rgba(255, 255, 255, 0.6);
-}
-
 /*
  * Tabular figures. Without this the panel visibly jitters every tick as digit
  * widths change under the numbers.
@@ -47,7 +51,27 @@
 
 .system-monitor-label {
     font-feature-settings: "tnum";
-    color: rgba(255, 255, 255, 0.6);
+    opacity: 0.6;
+}
+
+/*
+ * Muted text inherits the panel's own foreground colour and is dimmed with
+ * opacity, rather than hardcoding a light or dark value.
+ *
+ * Hardcoding was a real bug, not a style preference. The shell picks
+ * stylesheet-light.css purely from the colour-scheme setting, which does not
+ * reliably match what the panel actually renders as. Get that wrong and the
+ * separator is black on black: perfectly styled and completely invisible.
+ * Inheriting cannot be wrong, because the theme has already chosen a foreground
+ * that contrasts with its own background.
+ */
+.system-monitor-separator {
+    opacity: 0.55;
+}
+
+.system-monitor-menu-label,
+.system-monitor-menu-value {
+    opacity: 0.7;
 }
 
 /*
@@ -79,35 +103,63 @@
     icon-size: 1.09em;
 }
 
-/* Value tints, used by the per-metric colour axis. */
-.system-monitor-tint-cpu { color: #78aeed; }
-.system-monitor-tint-memory { color: #8ff0a4; }
-.system-monitor-tint-temperature { color: #ffbe6f; }
-.system-monitor-tint-network { color: #dc8add; }
-.system-monitor-tint-disk { color: #99c1f1; }
+/* Dropdown detail view. */
+.system-monitor-menu-heading {
+    font-weight: bold;
+}
+
+.system-monitor-menu-total,
+.system-monitor-menu-value {
+    font-feature-settings: "tnum";
+}
+
+.system-monitor-menu-label {
+    padding-left: 28px;
+}
+
+/*
+ * Per-metric colours.
+ *
+ * Mid-tones, not the light shades that read best on black. Measured contrast
+ * against #000000 and #fafafb respectively:
+ *
+ *   cpu          #3584e4   5.57  3.61
+ *   memory       #26a269   6.45  3.12
+ *   temperature  #e66100   6.07  3.31
+ *   network      #c061cb   5.81  3.46
+ *   disk         #008b82   5.02  4.01
+ *
+ * Amber is absent from the heat scale on purpose. Nothing in the yellow to
+ * amber range clears 3:1 on a light background; the best candidate managed
+ * 2.07, so the middle band is orange instead.
+ */
+.system-monitor-tint-cpu { color: #3584e4; }
+.system-monitor-tint-memory { color: #26a269; }
+.system-monitor-tint-temperature { color: #e66100; }
+.system-monitor-tint-network { color: #c061cb; }
+.system-monitor-tint-disk { color: #008b82; }
 
 /* Value tints, used by the heat mapped colour axis. */
-.system-monitor-heat-low { color: #8ff0a4; }
-.system-monitor-heat-mid { color: #ffbe6f; }
-.system-monitor-heat-high { color: #f66151; }
+.system-monitor-heat-low { color: #26a269; }
+.system-monitor-heat-mid { color: #e66100; }
+.system-monitor-heat-high { color: #e01b24; }
 
 /*
  * Glyph colours. Read in JavaScript via themeNode.lookup_color, never
  * hardcoded in the drawing code.
  */
 .system-monitor-glyph {
-    -system-monitor-track-color: rgba(255, 255, 255, 0.22);
-    -system-monitor-accent-color: #78aeed;
-    -system-monitor-heat-low: #8ff0a4;
-    -system-monitor-heat-mid: #ffbe6f;
-    -system-monitor-heat-high: #f66151;
+    -system-monitor-accent-color: #3584e4;
+    -system-monitor-heat-low: #26a269;
+    -system-monitor-heat-mid: #e66100;
+    -system-monitor-heat-high: #e01b24;
 }
 
-.system-monitor-metric-cpu { -system-monitor-accent-color: #78aeed; }
-.system-monitor-metric-memory { -system-monitor-accent-color: #8ff0a4; }
-.system-monitor-metric-temperature { -system-monitor-accent-color: #ffbe6f; }
-.system-monitor-metric-network { -system-monitor-accent-color: #dc8add; }
-.system-monitor-metric-disk { -system-monitor-accent-color: #99c1f1; }
+.system-monitor-metric-cpu { -system-monitor-accent-color: #3584e4; }
+.system-monitor-metric-memory { -system-monitor-accent-color: #26a269; }
+.system-monitor-metric-temperature { -system-monitor-accent-color: #e66100; }
+.system-monitor-metric-network { -system-monitor-accent-color: #c061cb; }
+.system-monitor-metric-disk { -system-monitor-accent-color: #008b82; }
 
 /*
  * Glyph sizes, in logical pixels. St scales these for HiDPI, and

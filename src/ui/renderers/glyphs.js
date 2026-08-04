@@ -35,6 +35,9 @@ import {heatLevel} from './presets.js';
 const FALLBACK_TRACK = 'rgba(255, 255, 255, 0.22)';
 const FALLBACK_ACCENT = '#78aeed';
 
+/** How visible the unfilled part of a gauge is against the panel. */
+const TRACK_ALPHA = 0.22;
+
 /**
  * Reads a colour from the theme node and converts it to plain components.
  *
@@ -61,6 +64,30 @@ function themeColour(themeNode, property, fallback) {
         return parseColour(colour.to_string());
     } catch {
         return parseColour(fallback);
+    }
+}
+
+/**
+ * The unfilled part of a gauge, derived from the theme's own foreground colour.
+ *
+ * Deliberately not a stylesheet value. The shell chooses between
+ * stylesheet.css and stylesheet-light.css from the colour-scheme setting, which
+ * does not reliably match what the panel actually renders as: on Ubuntu the
+ * panel can be dark while the setting says light. A hardcoded light or dark
+ * track is then invisible against its own background.
+ *
+ * The foreground colour cannot be wrong in that way, because the theme has
+ * already picked something that contrasts with whatever it is drawing on.
+ *
+ * @param {St.ThemeNode} themeNode - node to read from
+ * @returns {{r: number, g: number, b: number, a: number}} components 0 to 1
+ */
+function trackColour(themeNode) {
+    try {
+        const base = parseColour(themeNode.get_foreground_color().to_string());
+        return {...base, a: TRACK_ALPHA};
+    } catch {
+        return parseColour(FALLBACK_TRACK);
     }
 }
 
@@ -166,8 +193,7 @@ class GlyphArea extends St.DrawingArea {
     vfunc_style_changed() {
         const themeNode = this.get_theme_node();
 
-        this._trackColour = themeColour(themeNode,
-            '-system-monitor-track-color', FALLBACK_TRACK);
+        this._trackColour = trackColour(themeNode);
         this._accentColour = themeColour(themeNode,
             '-system-monitor-accent-color', FALLBACK_ACCENT);
         this._heatColours = {

@@ -195,6 +195,36 @@ export class MemoryProvider {
     }
 
     /**
+     * Used and swap, for the dropdown.
+     *
+     * Swap is omitted entirely when none is configured, rather than shown as a
+     * permanent 0B row. A machine with no swap has nothing to report there.
+     *
+     * @param {object|null} sample - reading from sample()
+     * @returns {Array<{label: string, text: string, fraction: number|null}>} detail rows
+     */
+    detail(sample) {
+        if (!sample)
+            return [];
+
+        const rows = [{
+            label: 'Used',
+            text: `${formatGibibytes(sample.usedBytes)} of ${formatGibibytes(sample.totalBytes)}`,
+            fraction: sample.percent / 100,
+        }];
+
+        if (sample.swapTotalBytes > 0) {
+            rows.push({
+                label: 'Swap',
+                text: `${formatGibibytes(sample.swapUsedBytes)} of ${formatGibibytes(sample.swapTotalBytes)}`,
+                fraction: sample.swapUsedBytes / sample.swapTotalBytes,
+            });
+        }
+
+        return rows;
+    }
+
+    /**
      * No state to drop, present so every provider has the same shape.
      */
     reset() {
