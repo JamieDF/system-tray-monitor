@@ -136,7 +136,7 @@ export class MemoryProvider {
      * @returns {string} symbolic icon name
      */
     get iconName() {
-        return 'system-monitor-memory-symbolic';
+        return 'system-tray-monitor-memory-symbolic';
     }
 
     /**

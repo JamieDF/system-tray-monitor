@@ -1,4 +1,4 @@
-# Contributing to System Monitor
+# Contributing to System Tray Monitor
 
 Thanks for taking the time to contribute! Every bug report, suggestion, and pull request helps.
 
@@ -46,9 +46,9 @@ Open an issue describing:
 There is no build step. Symlink the repo and compile the settings schema:
 
 ```bash
-ln -s "$PWD" ~/.local/share/gnome-shell/extensions/system-monitor@jamiedf.github.io
+ln -s "$PWD" ~/.local/share/gnome-shell/extensions/system-tray-monitor@jamiedf.github.io
 glib-compile-schemas schemas/
-gnome-extensions enable system-monitor@jamiedf.github.io
+gnome-extensions enable system-tray-monitor@jamiedf.github.io
 ```
 
 ### The Reload Trap

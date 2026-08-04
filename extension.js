@@ -28,8 +28,8 @@ const SEPARATORS = {
     pipe: '|',
 };
 
-const SystemMonitorIndicator = GObject.registerClass(
-class SystemMonitorIndicator extends PanelMenu.Button {
+const SystemTrayMonitorIndicator = GObject.registerClass(
+class SystemTrayMonitorIndicator extends PanelMenu.Button {
     /**
      * @param {object} params - construction parameters
      * @param {Array<{provider: object, axes: object}>} params.metrics - what to show
@@ -44,14 +44,14 @@ class SystemMonitorIndicator extends PanelMenu.Button {
             onOpenPreferences, onMenuOpened,
         } = params;
 
-        super._init(0.5, 'System Monitor', false);
+        super._init(0.5, 'System Tray Monitor', false);
 
         this._widgets = new Map();
 
         this._box = new St.BoxLayout({
             style_class: separator === 'space'
-                ? 'system-monitor-box'
-                : 'system-monitor-box system-monitor-box-tight',
+                ? 'system-tray-monitor-box'
+                : 'system-tray-monitor-box system-tray-monitor-box-tight',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.add_child(this._box);
@@ -62,7 +62,7 @@ class SystemMonitorIndicator extends PanelMenu.Button {
             if (separatorText !== null && index > 0) {
                 this._box.add_child(new St.Label({
                     text: separatorText,
-                    style_class: 'system-monitor-separator',
+                    style_class: 'system-tray-monitor-separator',
                     y_align: Clutter.ActorAlign.CENTER,
                 }));
             }
@@ -132,7 +132,7 @@ class SystemMonitorIndicator extends PanelMenu.Button {
     }
 });
 
-export default class SystemMonitorExtension extends Extension {
+export default class SystemTrayMonitorExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._settingsIds = [];
@@ -239,7 +239,7 @@ export default class SystemMonitorExtension extends Extension {
                 this._readCustomAxes(provider.id)),
         }));
 
-        this._indicator = new SystemMonitorIndicator({
+        this._indicator = new SystemTrayMonitorIndicator({
             metrics,
             extensionPath: this.path,
             separator: this._settings.get_string('separator'),

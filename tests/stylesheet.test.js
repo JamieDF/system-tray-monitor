@@ -94,7 +94,7 @@ function customProperties(css) {
     const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
     const found = new Set();
 
-    for (const match of withoutComments.matchAll(/(-system-monitor-[a-z-]+)\s*:/g))
+    for (const match of withoutComments.matchAll(/(-system-tray-monitor-[a-z-]+)\s*:/g))
         found.add(match[1]);
 
     return [...found].sort();
@@ -140,7 +140,7 @@ test('muted text sets no colour of its own', () => {
     // colour here is the exact bug that made the separator invisible.
     const withoutComments = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
 
-    for (const selector of ['.system-monitor-separator', '.system-monitor-label']) {
+    for (const selector of ['.system-tray-monitor-separator', '.system-tray-monitor-label']) {
         const rule = withoutComments.match(
             new RegExp(`\\${selector} \\{[^}]*\\}`));
         assert(rule !== null, `${selector} should be defined`);
@@ -157,22 +157,22 @@ test('the properties the drawing code reads are declared', () => {
     const declared = customProperties(sheet);
 
     for (const property of [
-        '-system-monitor-accent-color',
-        '-system-monitor-heat-low',
-        '-system-monitor-heat-mid',
-        '-system-monitor-heat-high',
+        '-system-tray-monitor-accent-color',
+        '-system-tray-monitor-heat-low',
+        '-system-tray-monitor-heat-mid',
+        '-system-tray-monitor-heat-high',
     ])
         assert(declared.includes(property), `${property} is read but not declared`);
 
-    assertEqual(declared.includes('-system-monitor-track-color'), false,
+    assertEqual(declared.includes('-system-tray-monitor-track-color'), false,
         'the track is derived from the theme, not declared here');
 });
 
 test('every metric has an accent colour and a reserved width', () => {
     for (const metric of ['cpu', 'memory', 'temperature', 'network', 'disk']) {
-        assert(sheet.includes(`.system-monitor-metric-${metric}`),
+        assert(sheet.includes(`.system-tray-monitor-metric-${metric}`),
             `${metric} has no accent colour`);
-        assert(new RegExp(`\\.system-monitor-value-${metric}\\s*\\{[^}]*min-width`)
+        assert(new RegExp(`\\.system-tray-monitor-value-${metric}\\s*\\{[^}]*min-width`)
             .test(sheet), `${metric} has no reserved width`);
     }
 });
@@ -181,7 +181,7 @@ test('the metric accents are distinguishable from each other', () => {
     // Five metrics sit side by side. Two that read as the same colour defeat
     // the point of colouring them at all.
     const accents = [...sheet.matchAll(
-        /\.system-monitor-metric-\w+ \{ -system-monitor-accent-color: (#[0-9a-f]{6})/gi)]
+        /\.system-tray-monitor-metric-\w+ \{ -system-tray-monitor-accent-color: (#[0-9a-f]{6})/gi)]
         .map(m => m[1].toLowerCase());
 
     assertEqual(accents.length, 5, 'expected five metric accents');

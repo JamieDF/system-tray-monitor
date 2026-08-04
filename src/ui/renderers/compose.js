@@ -37,7 +37,7 @@ class MetricWidget extends St.BoxLayout {
         const {provider, axes, extensionPath, historyLength = 20, graphWidth = 0} = params;
 
         super._init({
-            style_class: 'system-monitor-metric',
+            style_class: 'system-tray-monitor-metric',
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -67,7 +67,7 @@ class MetricWidget extends St.BoxLayout {
         if (icon) {
             this._icon = new St.Icon({
                 gicon: resolveIcon(extensionPath, this._provider.iconName),
-                style_class: 'system-status-icon system-monitor-icon',
+                style_class: 'system-status-icon system-tray-monitor-icon',
                 y_align: Clutter.ActorAlign.CENTER,
             });
             this._row.add_child(this._icon);
@@ -76,7 +76,7 @@ class MetricWidget extends St.BoxLayout {
         if (label !== 'none') {
             this._label = new St.Label({
                 text: this._labelText(label),
-                style_class: 'system-monitor-label',
+                style_class: 'system-tray-monitor-label',
                 y_align: Clutter.ActorAlign.CENTER,
             });
             this._row.add_child(this._label);
@@ -154,17 +154,17 @@ class MetricWidget extends St.BoxLayout {
      */
     _valueClass(fraction = null) {
         const classes = [
-            'system-monitor-value',
-            `system-monitor-value-${this._provider.id}`,
+            'system-tray-monitor-value',
+            `system-tray-monitor-value-${this._provider.id}`,
         ];
 
         const {colour} = this._axes;
         if (colour === 'metric') {
-            classes.push(`system-monitor-tint-${this._provider.id}`);
+            classes.push(`system-tray-monitor-tint-${this._provider.id}`);
         } else if (colour === 'heat') {
             const band = fraction === null ? null : heatLevel(fraction * 100);
             if (band !== null)
-                classes.push(`system-monitor-heat-${band}`);
+                classes.push(`system-tray-monitor-heat-${band}`);
         }
 
         return classes.join(' ');

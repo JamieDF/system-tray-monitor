@@ -3,14 +3,14 @@
   Copyright (C) 2026 JamieDF
   SPDX-License-Identifier: GPL-2.0-or-later
 -->
-<schemalist gettext-domain="system-monitor">
+<schemalist gettext-domain="system-tray-monitor">
 
   <!--
     Style presets. Each one is a named point in the six-axis space described in
     docs/architecture.md, not a separate renderer. "custom" means read the
     matching <metric>-custom key instead of a preset.
   -->
-  <enum id="org.gnome.shell.extensions.system-monitor.style">
+  <enum id="org.gnome.shell.extensions.system-tray-monitor.style">
     <value nick="text"         value="0"/>
     <value nick="icon-text"    value="1"/>
     <value nick="abbreviated"  value="2"/>
@@ -22,24 +22,24 @@
     <value nick="custom"       value="9"/>
   </enum>
 
-  <enum id="org.gnome.shell.extensions.system-monitor.separator">
+  <enum id="org.gnome.shell.extensions.system-tray-monitor.separator">
     <value nick="space" value="0"/>
     <value nick="dot"   value="1"/>
     <value nick="pipe"  value="2"/>
   </enum>
 
-  <enum id="org.gnome.shell.extensions.system-monitor.rate-unit">
+  <enum id="org.gnome.shell.extensions.system-tray-monitor.rate-unit">
     <value nick="bytes" value="0"/>
     <value nick="bits"  value="1"/>
   </enum>
 
-  <enum id="org.gnome.shell.extensions.system-monitor.temp-unit">
+  <enum id="org.gnome.shell.extensions.system-tray-monitor.temp-unit">
     <value nick="celsius"    value="0"/>
     <value nick="fahrenheit" value="1"/>
   </enum>
 
-  <schema id="org.gnome.shell.extensions.system-monitor"
-          path="/org/gnome/shell/extensions/system-monitor/">
+  <schema id="org.gnome.shell.extensions.system-tray-monitor"
+          path="/org/gnome/shell/extensions/system-tray-monitor/">
 
     <key name="enabled-metrics" type="as">
       <default>['cpu', 'memory', 'temperature', 'network', 'disk']</default>
@@ -56,31 +56,31 @@
       shape of the data: sparklines for rates, a ring for a fraction of a known
       total, icon and text for an absolute reading with no ceiling.
     -->
-    <key name="cpu-style" enum="org.gnome.shell.extensions.system-monitor.style">
+    <key name="cpu-style" enum="org.gnome.shell.extensions.system-tray-monitor.style">
       <default>'sparkline'</default>
       <summary>Display style for CPU</summary>
       <description>Preset used to render the CPU metric, or custom to use cpu-custom.</description>
     </key>
 
-    <key name="memory-style" enum="org.gnome.shell.extensions.system-monitor.style">
+    <key name="memory-style" enum="org.gnome.shell.extensions.system-tray-monitor.style">
       <default>'rings'</default>
       <summary>Display style for memory</summary>
       <description>Preset used to render the memory metric, or custom to use memory-custom.</description>
     </key>
 
-    <key name="temperature-style" enum="org.gnome.shell.extensions.system-monitor.style">
+    <key name="temperature-style" enum="org.gnome.shell.extensions.system-tray-monitor.style">
       <default>'icon-text'</default>
       <summary>Display style for temperature</summary>
       <description>Preset used to render the temperature metric, or custom to use temperature-custom.</description>
     </key>
 
-    <key name="network-style" enum="org.gnome.shell.extensions.system-monitor.style">
+    <key name="network-style" enum="org.gnome.shell.extensions.system-tray-monitor.style">
       <default>'sparkline'</default>
       <summary>Display style for network</summary>
       <description>Preset used to render the network metric, or custom to use network-custom.</description>
     </key>
 
-    <key name="disk-style" enum="org.gnome.shell.extensions.system-monitor.style">
+    <key name="disk-style" enum="org.gnome.shell.extensions.system-tray-monitor.style">
       <default>'sparkline'</default>
       <summary>Display style for disk</summary>
       <description>Preset used to render the disk metric, or custom to use disk-custom.</description>
@@ -125,7 +125,7 @@
       Global, not per metric: a separator sits between two metrics, so it belongs
       to the group rather than to any one of them.
     -->
-    <key name="separator" enum="org.gnome.shell.extensions.system-monitor.separator">
+    <key name="separator" enum="org.gnome.shell.extensions.system-tray-monitor.separator">
       <default>'space'</default>
       <summary>Separator drawn between metrics</summary>
       <description>Character or spacing used between adjacent metrics in the panel.</description>
@@ -141,19 +141,19 @@
       </description>
     </key>
 
-    <key name="net-unit" enum="org.gnome.shell.extensions.system-monitor.rate-unit">
+    <key name="net-unit" enum="org.gnome.shell.extensions.system-tray-monitor.rate-unit">
       <default>'bytes'</default>
       <summary>Network rate unit</summary>
       <description>Whether network throughput is shown in bytes or bits per second.</description>
     </key>
 
-    <key name="disk-unit" enum="org.gnome.shell.extensions.system-monitor.rate-unit">
+    <key name="disk-unit" enum="org.gnome.shell.extensions.system-tray-monitor.rate-unit">
       <default>'bytes'</default>
       <summary>Disk rate unit</summary>
       <description>Whether disk throughput is shown in bytes or bits per second.</description>
     </key>
 
-    <key name="temp-unit" enum="org.gnome.shell.extensions.system-monitor.temp-unit">
+    <key name="temp-unit" enum="org.gnome.shell.extensions.system-tray-monitor.temp-unit">
       <default>'celsius'</default>
       <summary>Temperature unit</summary>
       <description>Whether temperatures are shown in Celsius or Fahrenheit.</description>

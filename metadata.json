@@ -1,10 +1,10 @@
 {
-    "uuid": "system-monitor@jamiedf.github.io",
-    "name": "System Monitor",
+    "uuid": "system-tray-monitor@jamiedf.github.io",
+    "name": "System Tray Monitor",
     "description": "Shows CPU, memory, temperature, network and disk activity in the top bar. Every metric can be turned on or off and rendered in one of nine presets, or a custom combination of its own.",
     "shell-version": ["48", "49", "50"],
-    "url": "https://github.com/JamieDF/system-monitor",
-    "settings-schema": "org.gnome.shell.extensions.system-monitor",
-    "gettext-domain": "system-monitor",
+    "url": "https://github.com/JamieDF/system-tray-monitor",
+    "settings-schema": "org.gnome.shell.extensions.system-tray-monitor",
+    "gettext-domain": "system-tray-monitor",
     "version": 1
 }

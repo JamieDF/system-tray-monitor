@@ -1,4 +1,4 @@
-# System Monitor
+# System Tray Monitor
 
 A GNOME Shell extension showing CPU, memory, temperature, network and disk in the
 top bar, beside the existing status icons.
@@ -23,16 +23,16 @@ no libgtop: the metrics come straight from the kernel's own interfaces.
 Not yet on extensions.gnome.org. To run it from source:
 
 ```bash
-git clone https://github.com/JamieDF/system-monitor.git
-cd system-monitor
-ln -s "$PWD" ~/.local/share/gnome-shell/extensions/system-monitor@jamiedf.github.io
+git clone https://github.com/JamieDF/system-tray-monitor.git
+cd system-tray-monitor
+ln -s "$PWD" ~/.local/share/gnome-shell/extensions/system-tray-monitor@jamiedf.github.io
 glib-compile-schemas schemas/
 ```
 
 Then log out and back in, and enable it:
 
 ```bash
-gnome-extensions enable system-monitor@jamiedf.github.io
+gnome-extensions enable system-tray-monitor@jamiedf.github.io
 ```
 
 The log out is needed because GNOME Shell only picks up a newly installed
@@ -42,15 +42,15 @@ immediately.
 ### Uninstalling
 
 ```bash
-gnome-extensions disable system-monitor@jamiedf.github.io
-rm ~/.local/share/gnome-shell/extensions/system-monitor@jamiedf.github.io
+gnome-extensions disable system-tray-monitor@jamiedf.github.io
+rm ~/.local/share/gnome-shell/extensions/system-tray-monitor@jamiedf.github.io
 ```
 
 That removes the symlink, not the clone. Settings live in dconf and can be
 cleared separately:
 
 ```bash
-dconf reset -f /org/gnome/shell/extensions/system-monitor/
+dconf reset -f /org/gnome/shell/extensions/system-tray-monitor/
 ```
 
 ## Metrics
@@ -83,7 +83,7 @@ total, and icon plus value for temperature because it is an absolute reading.
 ## Preferences
 
 ```bash
-gnome-extensions prefs system-monitor@jamiedf.github.io
+gnome-extensions prefs system-tray-monitor@jamiedf.github.io
 ```
 
 Or use the Settings item in the dropdown.

@@ -104,7 +104,7 @@ class GlyphArea extends St.DrawingArea {
         const {kind, metricId, historyLength = 20, graphWidth = 0, ...rest} = params;
 
         super._init({
-            style_class: `system-monitor-glyph system-monitor-glyph-${kind} system-monitor-metric-${metricId}`,
+            style_class: `system-tray-monitor-glyph system-tray-monitor-glyph-${kind} system-tray-monitor-metric-${metricId}`,
             y_align: Clutter.ActorAlign.CENTER,
             ...rest,
         });
@@ -195,11 +195,11 @@ class GlyphArea extends St.DrawingArea {
 
         this._trackColour = trackColour(themeNode);
         this._accentColour = themeColour(themeNode,
-            '-system-monitor-accent-color', FALLBACK_ACCENT);
+            '-system-tray-monitor-accent-color', FALLBACK_ACCENT);
         this._heatColours = {
-            low: themeColour(themeNode, '-system-monitor-heat-low', FALLBACK_ACCENT),
-            mid: themeColour(themeNode, '-system-monitor-heat-mid', FALLBACK_ACCENT),
-            high: themeColour(themeNode, '-system-monitor-heat-high', FALLBACK_ACCENT),
+            low: themeColour(themeNode, '-system-tray-monitor-heat-low', FALLBACK_ACCENT),
+            mid: themeColour(themeNode, '-system-tray-monitor-heat-mid', FALLBACK_ACCENT),
+            high: themeColour(themeNode, '-system-tray-monitor-heat-high', FALLBACK_ACCENT),
         };
 
         super.vfunc_style_changed();

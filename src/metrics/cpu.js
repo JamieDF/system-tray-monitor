@@ -198,7 +198,7 @@ export class CpuProvider {
      * @returns {string} symbolic icon name
      */
     get iconName() {
-        return 'system-monitor-cpu-symbolic';
+        return 'system-tray-monitor-cpu-symbolic';
     }
 
     /**

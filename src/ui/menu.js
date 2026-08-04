@@ -45,14 +45,14 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
 
         this.add_child(new St.Label({
             text: provider.name,
-            style_class: 'system-monitor-menu-heading',
+            style_class: 'system-tray-monitor-menu-heading',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         }));
 
         this._value = new St.Label({
             text: '',
-            style_class: 'system-monitor-menu-total',
+            style_class: 'system-tray-monitor-menu-total',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.add_child(this._value);
@@ -77,7 +77,7 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
 
         this._label = new St.Label({
             text: '',
-            style_class: 'system-monitor-menu-label',
+            style_class: 'system-tray-monitor-menu-label',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -85,7 +85,7 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
 
         this._value = new St.Label({
             text: '',
-            style_class: 'system-monitor-menu-value',
+            style_class: 'system-tray-monitor-menu-value',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.add_child(this._value);

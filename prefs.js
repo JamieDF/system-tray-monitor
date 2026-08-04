@@ -122,7 +122,7 @@ function comboRow({title, subtitle, values, labels, selected, onChange}) {
     return row;
 }
 
-export default class SystemMonitorPreferences extends ExtensionPreferences {
+export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
     /**
      * @param {Adw.PreferencesWindow} window - the window to populate
      */

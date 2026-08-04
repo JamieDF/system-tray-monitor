@@ -59,7 +59,7 @@ function render(width, height, fn) {
     surface.flush();
 
     const path = GLib.build_filenamev([
-        GLib.get_tmp_dir(), `system-monitor-draw-${counter++}.png`,
+        GLib.get_tmp_dir(), `system-tray-monitor-draw-${counter++}.png`,
     ]);
     surface.writeToPNG(path);
     surface.finish();

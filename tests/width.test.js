@@ -141,7 +141,7 @@ test('every reserved width is declared for every metric', () => {
 
         for (const metric of ['cpu', 'memory', 'temperature', 'network', 'disk']) {
             const pattern = new RegExp(
-                `\\.system-monitor-value-${metric}\\s*\\{[^}]*min-width`);
+                `\\.system-tray-monitor-value-${metric}\\s*\\{[^}]*min-width`);
             assert(pattern.test(css),
                 `${sheet} has no reserved width for ${metric}`);
         }

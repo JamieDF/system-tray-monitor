@@ -164,7 +164,7 @@ export class Poller {
             } catch (error) {
                 // One misbehaving provider must not stop the others or kill the
                 // timer, which would silently freeze the whole panel.
-                logError(error, `system-monitor: provider "${provider.id}" failed to sample`);
+                logError(error, `system-tray-monitor: provider "${provider.id}" failed to sample`);
                 readings.set(provider.id, null);
             }
         }

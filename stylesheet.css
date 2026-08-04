@@ -24,12 +24,12 @@
  * because Cairo has no idea this stylesheet exists. See src/ui/renderers/glyphs.js.
  */
 
-.system-monitor-box {
+.system-tray-monitor-box {
     spacing: 9px;
 }
 
-.system-monitor-metric,
-.system-monitor-parts {
+.system-tray-monitor-metric,
+.system-tray-monitor-parts {
     spacing: 4px;
 }
 
@@ -37,7 +37,7 @@
  * A visible separator character supplies its own gap, so the generous spacing
  * used between bare metrics would read as too loose alongside it.
  */
-.system-monitor-box-tight {
+.system-tray-monitor-box-tight {
     spacing: 3px;
 }
 
@@ -45,11 +45,11 @@
  * Tabular figures. Without this the panel visibly jitters every tick as digit
  * widths change under the numbers.
  */
-.system-monitor-value {
+.system-tray-monitor-value {
     font-feature-settings: "tnum";
 }
 
-.system-monitor-label {
+.system-tray-monitor-label {
     font-feature-settings: "tnum";
     opacity: 0.6;
 }
@@ -65,12 +65,12 @@
  * Inheriting cannot be wrong, because the theme has already chosen a foreground
  * that contrasts with its own background.
  */
-.system-monitor-separator {
+.system-tray-monitor-separator {
     opacity: 0.55;
 }
 
-.system-monitor-menu-label,
-.system-monitor-menu-value {
+.system-tray-monitor-menu-label,
+.system-tray-monitor-menu-value {
     opacity: 0.7;
 }
 
@@ -93,27 +93,27 @@
  *   temperature  "100°C"     2.59em
  *   network/disk "100MB/s"   4.02em
  */
-.system-monitor-value-cpu { min-width: 2.7em; }
-.system-monitor-value-memory { min-width: 3.7em; }
-.system-monitor-value-temperature { min-width: 2.8em; }
-.system-monitor-value-network { min-width: 4.2em; }
-.system-monitor-value-disk { min-width: 4.2em; }
+.system-tray-monitor-value-cpu { min-width: 2.7em; }
+.system-tray-monitor-value-memory { min-width: 3.7em; }
+.system-tray-monitor-value-temperature { min-width: 2.8em; }
+.system-tray-monitor-value-network { min-width: 4.2em; }
+.system-tray-monitor-value-disk { min-width: 4.2em; }
 
-.system-monitor-icon {
+.system-tray-monitor-icon {
     icon-size: 1.09em;
 }
 
 /* Dropdown detail view. */
-.system-monitor-menu-heading {
+.system-tray-monitor-menu-heading {
     font-weight: bold;
 }
 
-.system-monitor-menu-total,
-.system-monitor-menu-value {
+.system-tray-monitor-menu-total,
+.system-tray-monitor-menu-value {
     font-feature-settings: "tnum";
 }
 
-.system-monitor-menu-label {
+.system-tray-monitor-menu-label {
     padding-left: 28px;
 }
 
@@ -133,54 +133,54 @@
  * amber range clears 3:1 on a light background; the best candidate managed
  * 2.07, so the middle band is orange instead.
  */
-.system-monitor-tint-cpu { color: #3584e4; }
-.system-monitor-tint-memory { color: #26a269; }
-.system-monitor-tint-temperature { color: #e66100; }
-.system-monitor-tint-network { color: #c061cb; }
-.system-monitor-tint-disk { color: #008b82; }
+.system-tray-monitor-tint-cpu { color: #3584e4; }
+.system-tray-monitor-tint-memory { color: #26a269; }
+.system-tray-monitor-tint-temperature { color: #e66100; }
+.system-tray-monitor-tint-network { color: #c061cb; }
+.system-tray-monitor-tint-disk { color: #008b82; }
 
 /* Value tints, used by the heat mapped colour axis. */
-.system-monitor-heat-low { color: #26a269; }
-.system-monitor-heat-mid { color: #e66100; }
-.system-monitor-heat-high { color: #e01b24; }
+.system-tray-monitor-heat-low { color: #26a269; }
+.system-tray-monitor-heat-mid { color: #e66100; }
+.system-tray-monitor-heat-high { color: #e01b24; }
 
 /*
  * Glyph colours. Read in JavaScript via themeNode.lookup_color, never
  * hardcoded in the drawing code.
  */
-.system-monitor-glyph {
-    -system-monitor-accent-color: #3584e4;
-    -system-monitor-heat-low: #26a269;
-    -system-monitor-heat-mid: #e66100;
-    -system-monitor-heat-high: #e01b24;
+.system-tray-monitor-glyph {
+    -system-tray-monitor-accent-color: #3584e4;
+    -system-tray-monitor-heat-low: #26a269;
+    -system-tray-monitor-heat-mid: #e66100;
+    -system-tray-monitor-heat-high: #e01b24;
 }
 
-.system-monitor-metric-cpu { -system-monitor-accent-color: #3584e4; }
-.system-monitor-metric-memory { -system-monitor-accent-color: #26a269; }
-.system-monitor-metric-temperature { -system-monitor-accent-color: #e66100; }
-.system-monitor-metric-network { -system-monitor-accent-color: #c061cb; }
-.system-monitor-metric-disk { -system-monitor-accent-color: #008b82; }
+.system-tray-monitor-metric-cpu { -system-tray-monitor-accent-color: #3584e4; }
+.system-tray-monitor-metric-memory { -system-tray-monitor-accent-color: #26a269; }
+.system-tray-monitor-metric-temperature { -system-tray-monitor-accent-color: #e66100; }
+.system-tray-monitor-metric-network { -system-tray-monitor-accent-color: #c061cb; }
+.system-tray-monitor-metric-disk { -system-tray-monitor-accent-color: #008b82; }
 
 /*
  * Glyph sizes, in logical pixels. St scales these for HiDPI, and
  * get_surface_size then reports the scaled figure to the drawing code.
  */
-.system-monitor-glyph-dot {
+.system-tray-monitor-glyph-dot {
     width: 8px;
     height: 8px;
 }
 
-.system-monitor-glyph-vbar {
+.system-tray-monitor-glyph-vbar {
     width: 5px;
     height: 15px;
 }
 
-.system-monitor-glyph-ring {
+.system-tray-monitor-glyph-ring {
     width: 18px;
     height: 18px;
 }
 
-.system-monitor-glyph-spark {
+.system-tray-monitor-glyph-spark {
     width: 36px;
     height: 14px;
 }

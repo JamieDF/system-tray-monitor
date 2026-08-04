@@ -182,7 +182,7 @@ export class ThermalProvider {
      * @returns {string} symbolic icon name
      */
     get iconName() {
-        return 'system-monitor-temperature-symbolic';
+        return 'system-tray-monitor-temperature-symbolic';
     }
 
     /**
