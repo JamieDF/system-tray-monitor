@@ -17,7 +17,9 @@
  */
 
 import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -150,22 +152,42 @@ export default class SystemMonitorPreferences extends ExtensionPreferences {
             icon_name: 'view-list-symbolic',
         });
 
+        // Ordering and configuring are separate jobs, so they get separate
+        // sections. Putting reorder buttons on each metric row meant every row
+        // carried four controls doing three unrelated things, and the down
+        // arrow was the same chevron as the expander's own drawer arrow.
+        //
+        // Splitting them also makes the order visible in one place. Arrows on
+        // rows only ever told you "this can move", never where it currently sat.
+        const orderGroup = new Adw.PreferencesGroup({
+            title: 'Panel order',
+            description: 'Left to right, as they appear in the top bar. ' +
+                'Drag to reorder, or focus a metric and press Ctrl with an arrow key.',
+        });
+        page.add(orderGroup);
+
         const group = new Adw.PreferencesGroup({
-            title: 'Panel metrics',
-            description: 'Shown left to right in the order below. ' +
-                'A metric that is switched off is never sampled.',
+            title: 'Metrics',
+            description: 'A metric that is switched off is never sampled.',
         });
         page.add(group);
 
-        // Rebuilding the whole group on a change is simpler than surgically
-        // moving rows, and at five metrics the cost is irrelevant.
+        // Rebuilding both sections on a change is simpler than surgically
+        // moving things, and at five metrics the cost is irrelevant.
         //
-        // The added rows are tracked explicitly rather than walked from the
-        // group, because a PreferencesGroup's real children are its internal
-        // box and header, not the rows added to it.
+        // Rows are tracked explicitly rather than walked from the group, because
+        // a PreferencesGroup's real children are its internal box and header,
+        // not the rows added to it.
         let shown = [];
+        let orderRow = null;
 
         const rebuild = () => {
+            if (orderRow !== null)
+                orderGroup.remove(orderRow);
+
+            orderRow = this._orderStrip(settings, providers, rebuild);
+            orderGroup.add(orderRow);
+
             for (const row of shown)
                 group.remove(row);
 
@@ -179,6 +201,200 @@ export default class SystemMonitorPreferences extends ExtensionPreferences {
         rebuild();
 
         return page;
+    }
+
+    /**
+     * The reorder strip: one chip per shown metric, in panel order.
+     *
+     * Horizontal rather than a vertical list, because the thing being ordered is
+     * horizontal. An up arrow meaning "left" was a translation the user had to
+     * perform on every use.
+     *
+     * Two ways to move a chip, and both are needed. Dragging is the obvious
+     * gesture but is mouse only, so it cannot be the only one: an extension that
+     * removes the sole keyboard path fails the accessibility expectations
+     * extensions.gnome.org reviews against. Ctrl with the arrow keys moves the
+     * focused chip and covers that.
+     *
+     * Added straight to the group rather than wrapped in an ActionRow. That
+     * row's prefix slot is sized for a small icon, so a full width strip put
+     * there gets squashed to nothing.
+     *
+     * @param {Gio.Settings} settings - extension settings
+     * @param {object[]} providers - every known provider
+     * @param {Function} rebuild - re-renders both sections
+     * @returns {Gtk.Widget} the strip
+     */
+    _orderStrip(settings, providers, rebuild) {
+        const byId = new Map(providers.map(p => [p.id, p]));
+        const order = settings.get_strv('enabled-metrics').filter(id => byId.has(id));
+
+        if (order.length === 0) {
+            return new Gtk.Label({
+                label: 'No metrics are shown in the panel.',
+                css_classes: ['dim-label'],
+                halign: Gtk.Align.START,
+                margin_top: 6,
+            });
+        }
+
+        const strip = new Gtk.Box({
+            spacing: 8,
+            css_classes: ['card'],
+            margin_top: 4,
+        });
+        strip.set_margin_start(0);
+
+        const inner = new Gtk.Box({
+            spacing: 8,
+            margin_top: 10,
+            margin_bottom: 10,
+            margin_start: 12,
+            margin_end: 12,
+        });
+        strip.append(inner);
+
+        for (const id of order)
+            inner.append(this._orderChip(settings, byId.get(id), order, rebuild));
+
+        return strip;
+    }
+
+    /**
+     * One draggable chip.
+     *
+     * @param {Gio.Settings} settings - extension settings
+     * @param {object} provider - the metric this chip represents
+     * @param {string[]} order - current panel order
+     * @param {Function} rebuild - re-renders both sections
+     * @returns {Gtk.Button} the chip
+     */
+    _orderChip(settings, provider, order, rebuild) {
+        const content = new Gtk.Box({spacing: 6});
+        content.append(new Gtk.Image({
+            gicon: resolveIcon(this.path, provider.iconName),
+        }));
+        content.append(new Gtk.Label({label: provider.name}));
+
+        const chip = new Gtk.Button({
+            child: content,
+            tooltip_text: 'Drag to reorder, or focus and press Ctrl with an arrow key',
+        });
+
+        // Focus is the selection. Tracking a separate "selected" chip would be
+        // a second thing to keep in sync for no gain, since Ctrl with an arrow
+        // key already acts on whatever is focused.
+        chip.connect('map', () => {
+            if (this._focusMetric === provider.id)
+                chip.grab_focus();
+        });
+
+        this._makeDraggable(chip, provider.id);
+        this._makeDropTarget(chip, settings, provider.id, rebuild);
+        this._addKeyboardReorder(chip, settings, provider.id, order, rebuild);
+
+        return chip;
+    }
+
+    /**
+     * @param {Gtk.Widget} chip - the chip to drag
+     * @param {string} metricId - what this chip represents
+     */
+    _makeDraggable(chip, metricId) {
+        const source = new Gtk.DragSource({actions: Gdk.DragAction.MOVE});
+
+        source.connect('prepare', () => {
+            const value = new GObject.Value();
+            value.init(GObject.TYPE_STRING);
+            value.set_string(metricId);
+
+            return Gdk.ContentProvider.new_for_value(value);
+        });
+
+        // Without an explicit icon the pointer carries nothing and the drag
+        // looks broken even though it works.
+        source.connect('drag-begin', () => {
+            const paintable = new Gtk.WidgetPaintable({widget: chip});
+            source.set_icon(paintable, 0, 0);
+        });
+
+        chip.add_controller(source);
+    }
+
+    /**
+     * @param {Gtk.Widget} chip - the chip being dropped onto
+     * @param {Gio.Settings} settings - extension settings
+     * @param {string} metricId - what this chip represents
+     * @param {Function} rebuild - re-renders both sections
+     */
+    _makeDropTarget(chip, settings, metricId, rebuild) {
+        const target = new Gtk.DropTarget({
+            actions: Gdk.DragAction.MOVE,
+            formats: Gdk.ContentFormats.new_for_gtype(GObject.TYPE_STRING),
+        });
+
+        // Highlighting the chip under the pointer is what tells the user where
+        // the thing will land. Without it a drag is a guess.
+        target.connect('enter', () => {
+            chip.add_css_class('suggested-action');
+            return Gdk.DragAction.MOVE;
+        });
+        target.connect('leave', () => chip.remove_css_class('suggested-action'));
+
+        target.connect('drop', (_target, value) => {
+            chip.remove_css_class('suggested-action');
+
+            const dragged = value.get_string();
+            if (!dragged || dragged === metricId)
+                return false;
+
+            const order = settings.get_strv('enabled-metrics');
+            this._reorder(settings, dragged, order.indexOf(metricId));
+
+            this._focusMetric = dragged;
+            rebuild();
+
+            return true;
+        });
+
+        chip.add_controller(target);
+    }
+
+    /**
+     * @param {Gtk.Widget} chip - the chip to attach to
+     * @param {Gio.Settings} settings - extension settings
+     * @param {string} metricId - what this chip represents
+     * @param {string[]} order - current panel order
+     * @param {Function} rebuild - re-renders both sections
+     */
+    _addKeyboardReorder(chip, settings, metricId, order, rebuild) {
+        const keys = new Gtk.EventControllerKey();
+
+        keys.connect('key-pressed', (_controller, keyval, _code, state) => {
+            if (!(state & Gdk.ModifierType.CONTROL_MASK))
+                return false;
+
+            // Left and right rather than up and down, matching both the strip's
+            // orientation and the panel's.
+            const delta = keyval === Gdk.KEY_Left
+                ? -1
+                : keyval === Gdk.KEY_Right ? 1 : 0;
+
+            if (delta === 0)
+                return false;
+
+            const index = order.indexOf(metricId);
+            if (index < 0 || index + delta < 0 || index + delta >= order.length)
+                return true;
+
+            this._reorder(settings, metricId, index + delta);
+            this._focusMetric = metricId;
+            rebuild();
+
+            return true;
+        });
+
+        chip.add_controller(keys);
     }
 
     /**
@@ -208,6 +424,26 @@ export default class SystemMonitorPreferences extends ExtensionPreferences {
     }
 
     /**
+     * Moves a metric to an absolute position in the panel order.
+     *
+     * @param {Gio.Settings} settings - extension settings
+     * @param {string} metricId - the metric to move
+     * @param {number} target - index to move it to
+     */
+    _reorder(settings, metricId, target) {
+        const order = settings.get_strv('enabled-metrics');
+        const from = order.indexOf(metricId);
+
+        if (from < 0 || target < 0 || target >= order.length || from === target)
+            return;
+
+        order.splice(from, 1);
+        order.splice(target, 0, metricId);
+
+        settings.set_strv('enabled-metrics', order);
+    }
+
+    /**
      * @param {Gio.Settings} settings - extension settings
      * @param {object} provider - the metric
      * @param {Function} rebuild - re-renders the whole list
@@ -216,8 +452,7 @@ export default class SystemMonitorPreferences extends ExtensionPreferences {
     _metricRow(settings, provider, rebuild) {
         const styleKey = `${provider.id}-style`;
         const style = settings.get_string(styleKey);
-        const enabled = settings.get_strv('enabled-metrics');
-        const isEnabled = enabled.includes(provider.id);
+        const isEnabled = settings.get_strv('enabled-metrics').includes(provider.id);
         const available = provider.isAvailable();
 
         const row = new Adw.ExpanderRow({
@@ -228,35 +463,9 @@ export default class SystemMonitorPreferences extends ExtensionPreferences {
 
         row.add_prefix(new Gtk.Image({gicon: resolveIcon(this.path, provider.iconName)}));
 
-        // Reordering only means anything for metrics that are in the list.
-        const index = enabled.indexOf(provider.id);
-        const up = new Gtk.Button({
-            icon_name: 'go-up-symbolic',
-            valign: Gtk.Align.CENTER,
-            css_classes: ['flat'],
-            sensitive: isEnabled && index > 0,
-            tooltip_text: 'Move left in the panel',
-        });
-        const down = new Gtk.Button({
-            icon_name: 'go-down-symbolic',
-            valign: Gtk.Align.CENTER,
-            css_classes: ['flat'],
-            sensitive: isEnabled && index >= 0 && index < enabled.length - 1,
-            tooltip_text: 'Move right in the panel',
-        });
-
-        up.connect('clicked', () => {
-            this._move(settings, provider.id, -1);
-            rebuild();
-        });
-        down.connect('clicked', () => {
-            this._move(settings, provider.id, 1);
-            rebuild();
-        });
-
-        row.add_suffix(up);
-        row.add_suffix(down);
-
+        // No reorder buttons here. Ordering lives in its own section above, so
+        // this row carries only the two things that belong to the metric
+        // itself: whether it is shown, and how it is drawn.
         const toggle = new Gtk.Switch({
             active: isEnabled,
             valign: Gtk.Align.CENTER,
@@ -430,23 +639,6 @@ export default class SystemMonitorPreferences extends ExtensionPreferences {
             settings.set_strv('enabled-metrics', [...current, metricId]);
         else if (!enabled)
             settings.set_strv('enabled-metrics', current.filter(id => id !== metricId));
-    }
-
-    /**
-     * @param {Gio.Settings} settings - extension settings
-     * @param {string} metricId - the metric
-     * @param {number} delta - -1 to move earlier, 1 to move later
-     */
-    _move(settings, metricId, delta) {
-        const order = settings.get_strv('enabled-metrics');
-        const index = order.indexOf(metricId);
-        const target = index + delta;
-
-        if (index < 0 || target < 0 || target >= order.length)
-            return;
-
-        [order[index], order[target]] = [order[target], order[index]];
-        settings.set_strv('enabled-metrics', order);
     }
 
     /**
