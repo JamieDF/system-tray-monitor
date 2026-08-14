@@ -5,7 +5,8 @@ top bar, beside the existing status icons.
 
 Every metric can be switched off independently and each one picks its own look,
 from a plain number to a live sparkline. Clicking the indicator opens a detail
-view with per-core CPU, swap, and network and disk split by direction.
+view with a history plot per metric, plus per-core CPU, swap, and network and
+disk split by direction.
 
 ![The indicator in the top bar](docs/screenshots/panel.png)
 

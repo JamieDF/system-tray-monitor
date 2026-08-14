@@ -34,6 +34,7 @@ import {heatLevel} from './presets.js';
 /** Used only if the stylesheet fails to load entirely. */
 const FALLBACK_TRACK = 'rgba(255, 255, 255, 0.22)';
 const FALLBACK_ACCENT = '#78aeed';
+const FALLBACK_SECONDARY = '#f5c211';
 
 /** How visible the unfilled part of a gauge is against the panel. */
 const TRACK_ALPHA = 0.22;
@@ -247,5 +248,152 @@ class GlyphArea extends St.DrawingArea {
             return this._heatColours[this._heat] ?? this._accentColour;
 
         return this._accentColour;
+    }
+});
+
+/**
+ * The plot shown inside the dropdown, one per metric section.
+ *
+ * Same disciplines as GlyphArea, which is why it lives here rather than in
+ * menu.js: colours read from the theme node and cached, history owned by the
+ * widget, queue_repaint on every change, cr.$dispose() in a finally. What
+ * differs is the data: a panel glyph shows one series the user glimpses, while
+ * this shows one or two series the user has opened the menu to study, over a
+ * longer window and at a configured height.
+ */
+export const MenuGraphArea = GObject.registerClass(
+class MenuGraphArea extends St.DrawingArea {
+    /**
+     * @param {object} params - construction parameters
+     * @param {string} params.metricId - used to pick the accent colour class
+     * @param {number} [params.seriesCount] - how many lines the plot draws
+     * @param {number} [params.historyLength] - samples retained per line
+     * @param {number} [params.height] - plot height in logical pixels
+     */
+    _init(params) {
+        const {metricId, seriesCount = 1, historyLength = 60, height = 48, ...rest} = params;
+
+        super._init({
+            style_class: `system-tray-monitor-menu-graph system-tray-monitor-metric-${metricId}`,
+            x_expand: true,
+            ...rest,
+        });
+
+        // Height comes from settings rather than the stylesheet, for the same
+        // reason the sparkline's width does: CSS cannot read settings. St
+        // scales the value for HiDPI either way.
+        this.set_style(`height: ${height}px;`);
+
+        this._histories = Array.from(
+            {length: seriesCount}, () => new History(historyLength));
+
+        this._accentColour = parseColour(FALLBACK_ACCENT);
+        this._secondaryColour = parseColour(FALLBACK_SECONDARY);
+    }
+
+    /**
+     * Records a tick, one value per line.
+     *
+     * Values are raw rather than formatted, since the plot scales against its
+     * own history instead of showing numbers. Nulls are recorded too: a
+     * missing reading is a gap in the line, not a zero.
+     *
+     * @param {Array<number|null>} values - one sample per line
+     */
+    setValues(values) {
+        for (let i = 0; i < this._histories.length && i < values.length; i++)
+            this._histories[i].push(values[i]);
+
+        // Always, because the window advances even when every value is
+        // unchanged, exactly as with the panel sparklines.
+        this.queue_repaint();
+    }
+
+    /**
+     * Resizes each line's buffer after a settings change.
+     *
+     * @param {number} length - number of samples to retain
+     */
+    setHistoryLength(length) {
+        for (const history of this._histories)
+            history.resize(length);
+
+        this.queue_repaint();
+    }
+
+    /**
+     * Discards history, so a resumed plot does not draw a line across a period
+     * when polling was stopped.
+     */
+    clearHistory() {
+        for (const history of this._histories)
+            history.clear();
+
+        this.queue_repaint();
+    }
+
+    vfunc_style_changed() {
+        const themeNode = this.get_theme_node();
+
+        this._accentColour = themeColour(themeNode,
+            '-system-tray-monitor-accent-color', FALLBACK_ACCENT);
+        this._secondaryColour = themeColour(themeNode,
+            '-system-tray-monitor-secondary-color', FALLBACK_SECONDARY);
+
+        super.vfunc_style_changed();
+        this.queue_repaint();
+    }
+
+    vfunc_repaint() {
+        const cr = this.get_context();
+        const [width, height] = this.get_surface_size();
+
+        try {
+            if (width <= 0 || height <= 0)
+                return;
+
+            // Both lines share one scale. Scaling each against its own
+            // history would let a 50kB/s upload climb as high as a 5MB/s
+            // download, which is the one thing a graph of the two together
+            // must never suggest.
+            let min = Infinity;
+            let max = -Infinity;
+
+            for (const history of this._histories) {
+                const range = history.range();
+
+                if (range === null)
+                    continue;
+
+                min = Math.min(min, range.min);
+                max = Math.max(max, range.max);
+            }
+
+            // Nothing has been recorded yet, or every reading was missing.
+            // There is no honest line to draw, so draw none rather than a
+            // fake flat one at zero.
+            if (min === Infinity)
+                return;
+
+            const geometry = {width, height};
+            const range = {min, max};
+
+            this._histories.forEach((history, index) => {
+                drawSpark(cr, geometry, {fill: this._lineColour(index)},
+                    history.values(), range);
+            });
+        } finally {
+            // Must happen even if drawing threw, or the context leaks and GJS
+            // complains on every subsequent frame.
+            cr.$dispose();
+        }
+    }
+
+    /**
+     * @param {number} index - which line, first is the metric's own accent
+     * @returns {object} RGBA components that line should use
+     */
+    _lineColour(index) {
+        return index === 0 ? this._accentColour : this._secondaryColour;
     }
 });

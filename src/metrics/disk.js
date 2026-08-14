@@ -242,6 +242,20 @@ export class DiskProvider {
     }
 
     /**
+     * Raw per-direction values for the dropdown's graph.
+     *
+     * Unformatted, because a graph scales against its own history rather than
+     * showing the numbers. The order matches detail(), so the line a colour
+     * identifies is the row of the same name just below it.
+     *
+     * @param {object|null} sample - reading from sample()
+     * @returns {Array<number|null>} read then write, null where unknown
+     */
+    series(sample) {
+        return [sample?.readRate ?? null, sample?.writeRate ?? null];
+    }
+
+    /**
      * Reads and writes separately, for the dropdown.
      *
      * @param {object|null} sample - reading from sample()

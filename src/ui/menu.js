@@ -12,6 +12,11 @@
  * per-core parsing walks one line per core on every tick, forever, to serve a
  * menu that is closed almost all of the time. The providers keep it out of
  * sample() for that reason, and this file is what turns it on and off.
+ *
+ * The graphs are the exception to that gating. Their histories are fed on
+ * every tick, because a plot of the last minute is worth nothing if it only
+ * covers the seconds since the menu was opened, and the cost is one bounded
+ * array push per line, which is not in the same class as the parsing above.
  */
 
 import Clutter from 'gi://Clutter';
@@ -21,6 +26,7 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {resolveIcon} from './icons.js';
+import {MenuGraphArea} from './renderers/glyphs.js';
 
 /**
  * A metric's heading inside the menu: icon, full name, and the same value the
@@ -104,6 +110,54 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
 });
 
 /**
+ * A metric's plot inside the menu: a history graph filling the row.
+ */
+const GraphItem = GObject.registerClass(
+class GraphItem extends PopupMenu.PopupBaseMenuItem {
+    /**
+     * @param {object} provider - the metric being plotted
+     * @param {object} graphs - plot configuration drawn from settings
+     * @param {number} graphs.historyLength - samples retained per line
+     * @param {number} graphs.height - plot height in logical pixels
+     */
+    _init(provider, graphs) {
+        super._init({reactive: false, can_focus: false});
+
+        // series(null) is a valid call and reveals the line count without
+        // needing a reading, the same way detail(null) reveals the row shape.
+        this._area = new MenuGraphArea({
+            metricId: provider.id,
+            seriesCount: provider.series ? provider.series(null).length : 1,
+            historyLength: graphs.historyLength,
+            height: graphs.height,
+        });
+        this.add_child(this._area);
+    }
+
+    /**
+     * @param {Array<number|null>} values - one sample per line
+     */
+    setValues(values) {
+        this._area.setValues(values);
+    }
+
+    /**
+     * @param {number} length - number of samples to retain
+     */
+    setHistoryLength(length) {
+        this._area.setHistoryLength(length);
+    }
+
+    /**
+     * Discards history, so a resumed plot does not draw a line across a period
+     * when polling was stopped.
+     */
+    clearHistory() {
+        this._area.clearHistory();
+    }
+});
+
+/**
  * Builds and maintains the contents of the indicator's menu.
  */
 export class MetricMenu {
@@ -113,12 +167,19 @@ export class MetricMenu {
      * @param {string} extensionPath - for resolving bundled icons
      * @param {Function} onOpenPreferences - invoked by the settings item
      * @param {Function} [onOpened] - invoked when the menu becomes visible
+     * @param {object} [graphs] - plot configuration drawn from settings
+     * @param {Set<string>} [graphs.enabled] - provider ids that get a plot
+     * @param {number} [graphs.historyLength] - samples retained per line
+     * @param {number} [graphs.height] - plot height in logical pixels
      */
-    constructor(menu, providers, extensionPath, onOpenPreferences, onOpened = () => {}) {
+    constructor(menu, providers, extensionPath, onOpenPreferences,
+        onOpened = () => {}, graphs = null) {
         this._menu = menu;
         this._providers = providers;
         this._sections = new Map();
         this._isOpen = false;
+
+        const plotted = graphs?.enabled ?? new Set();
 
         providers.forEach((provider, index) => {
             if (index > 0)
@@ -127,9 +188,19 @@ export class MetricMenu {
             const header = new HeaderItem(provider, extensionPath);
             menu.addMenuItem(header);
 
+            // The plot sits between the heading and the detail rows. It is
+            // what the menu was opened to see; the rows are the numbers
+            // behind it.
+            let graph = null;
+
+            if (plotted.has(provider.id)) {
+                graph = new GraphItem(provider, graphs);
+                menu.addMenuItem(graph);
+            }
+
             // Detail rows are created lazily, because how many there are is not
             // known until the metric is asked. Core count is the obvious case.
-            this._sections.set(provider.id, {header, rows: [], provider});
+            this._sections.set(provider.id, {header, graph, rows: [], provider});
         });
 
         if (providers.length > 0)
@@ -167,13 +238,19 @@ export class MetricMenu {
     /**
      * Applies a tick's readings.
      *
-     * Returns immediately when closed, which is what keeps per-core parsing off
-     * the normal path.
+     * The plots record first, on every tick, so their histories cover the
+     * closed period. The rest returns immediately when closed, which is what
+     * keeps per-core parsing off the normal path.
      *
      * @param {Map<string, object|null>} readings - provider id to sample
      * @param {object} options - formatting options drawn from settings
      */
     update(readings, options) {
+        for (const [id, section] of this._sections) {
+            if (readings.has(id))
+                section.graph?.setValues(this._lineValues(section.provider, readings.get(id)));
+        }
+
         if (!this._isOpen)
             return;
 
@@ -189,6 +266,43 @@ export class MetricMenu {
     }
 
     /**
+     * Resizes each plot's buffers after a settings change.
+     *
+     * @param {number} length - samples to retain per line
+     */
+    setHistoryLength(length) {
+        for (const {graph} of this._sections.values())
+            graph?.setHistoryLength(length);
+    }
+
+    /**
+     * Discards plot history alongside the panel's, so a resumed plot does not
+     * draw a line across the period polling was stopped.
+     */
+    clearHistory() {
+        for (const {graph} of this._sections.values())
+            graph?.clearHistory();
+    }
+
+    /**
+     * The values a section's plot should record.
+     *
+     * Metrics with a direction to separate say so through series(). The rest
+     * plot the same single magnitude the panel sparkline uses, which keeps
+     * this from growing a per-metric branch.
+     *
+     * @param {object} provider - the metric being plotted
+     * @param {object|null} sample - reading from sample()
+     * @returns {Array<number|null>} one value per line
+     */
+    _lineValues(provider, sample) {
+        if (provider.series)
+            return provider.series(sample);
+
+        return [provider.magnitude?.(sample) ?? null];
+    }
+
+    /**
      * Syncs a section's detail rows to the data, creating or hiding rows as the
      * count changes.
      *
@@ -199,10 +313,11 @@ export class MetricMenu {
         while (section.rows.length < rows.length) {
             const item = new DetailItem();
 
-            // Inserted directly after the heading and any rows already there,
-            // so a section's rows stay together rather than landing at the end
-            // of the whole menu.
-            const position = this._menu._getMenuItems().indexOf(section.header) +
+            // Inserted directly after the heading, or the plot when there is
+            // one, and any rows already there, so a section's rows stay
+            // together rather than landing at the end of the whole menu.
+            const anchor = section.graph ?? section.header;
+            const position = this._menu._getMenuItems().indexOf(anchor) +
                 section.rows.length + 1;
             this._menu.addMenuItem(item, position);
             section.rows.push(item);

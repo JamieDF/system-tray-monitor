@@ -118,6 +118,17 @@
 }
 
 /*
+ * The dropdown plot. Only its breathing room lives here. The height comes
+ * from settings, for the same reason the sparkline's width does: CSS cannot
+ * read settings. Only network and disk carry the secondary colour, since
+ * they are the only metrics with a second direction to draw.
+ */
+.system-tray-monitor-menu-graph {
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+/*
  * Per-metric colours.
  *
  * Mid-tones, not the light shades that read best on black. Measured contrast
@@ -158,8 +169,8 @@
 .system-tray-monitor-metric-cpu { -system-tray-monitor-accent-color: #3584e4; }
 .system-tray-monitor-metric-memory { -system-tray-monitor-accent-color: #26a269; }
 .system-tray-monitor-metric-temperature { -system-tray-monitor-accent-color: #e66100; }
-.system-tray-monitor-metric-network { -system-tray-monitor-accent-color: #c061cb; }
-.system-tray-monitor-metric-disk { -system-tray-monitor-accent-color: #008b82; }
+.system-tray-monitor-metric-network { -system-tray-monitor-accent-color: #c061cb; -system-tray-monitor-secondary-color: #1c71d8; }
+.system-tray-monitor-metric-disk { -system-tray-monitor-accent-color: #008b82; -system-tray-monitor-secondary-color: #c64600; }
 
 /*
  * Glyph sizes, in logical pixels. St scales these for HiDPI, and

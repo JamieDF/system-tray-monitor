@@ -502,6 +502,19 @@ export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
 
         this._addStyleRows(settings, provider, row, rebuild);
 
+        // A row inside the drawer rather than another suffix, because the
+        // suffix slot is the panel's on/off and these configure different
+        // surfaces: the toggle says whether the metric exists in the panel at
+        // all, this says whether its dropdown section opens onto a plot.
+        const dropdownGraph = new Adw.SwitchRow({
+            title: 'Dropdown graph',
+            subtitle: 'A history plot in the dropdown for this metric',
+            active: settings.get_boolean(`${provider.id}-menu-graph`),
+        });
+        dropdownGraph.connect('notify::active', () =>
+            settings.set_boolean(`${provider.id}-menu-graph`, dropdownGraph.active));
+        row.add_row(dropdownGraph);
+
         return row;
     }
 
@@ -714,6 +727,28 @@ export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
             key: 'history-length',
             title: 'History',
             subtitle: 'Samples kept per graph',
+            min: 8,
+            max: 120,
+        }));
+
+        const menuGraphs = new Adw.PreferencesGroup({
+            title: 'Dropdown graphs',
+            description: 'History plots shown in the dropdown.',
+        });
+        page.add(menuGraphs);
+
+        menuGraphs.add(this._spinRow(settings, {
+            key: 'menu-graph-height',
+            title: 'Height',
+            subtitle: 'Logical pixels, before display scaling',
+            min: 24,
+            max: 96,
+        }));
+
+        menuGraphs.add(this._spinRow(settings, {
+            key: 'menu-history-length',
+            title: 'History',
+            subtitle: 'Samples kept per plot line',
             min: 8,
             max: 120,
         }));
