@@ -122,6 +122,41 @@
     </key>
 
     <!--
+      Per-metric dropdown plots. A plot is the first thing its section of the
+      dropdown shows, but five of them make a long menu, so each is switched
+      by the metric it belongs to.
+    -->
+    <key name="cpu-menu-graph" type="b">
+      <default>true</default>
+      <summary>Show a CPU graph in the dropdown</summary>
+      <description>The plot draws CPU use over the menu history length.</description>
+    </key>
+
+    <key name="memory-menu-graph" type="b">
+      <default>true</default>
+      <summary>Show a memory graph in the dropdown</summary>
+      <description>The plot draws memory use over the menu history length.</description>
+    </key>
+
+    <key name="temperature-menu-graph" type="b">
+      <default>true</default>
+      <summary>Show a temperature graph in the dropdown</summary>
+      <description>The plot draws the sensor reading over the menu history length.</description>
+    </key>
+
+    <key name="network-menu-graph" type="b">
+      <default>true</default>
+      <summary>Show a network graph in the dropdown</summary>
+      <description>The plot draws receive and transmit as two separately coloured lines.</description>
+    </key>
+
+    <key name="disk-menu-graph" type="b">
+      <default>true</default>
+      <summary>Show a disk graph in the dropdown</summary>
+      <description>The plot draws reads and writes as two separately coloured lines.</description>
+    </key>
+
+    <!--
       Global, not per metric: a separator sits between two metrics, so it belongs
       to the group rather than to any one of them.
     -->
@@ -180,6 +215,31 @@
         Length of the ring buffer backing each sparkline. Bounded deliberately:
         this buffer is allocated on enable and released on disable, and must not
         grow over time.
+      </description>
+    </key>
+
+    <!--
+      Dropdown plots. Separate from the panel's graph settings because the two
+      serve different reads: a panel sparkline answers what just happened at a
+      glance, while the dropdown is opened precisely to study a longer stretch.
+    -->
+    <key name="menu-graph-height" type="i">
+      <range min="24" max="96"/>
+      <default>48</default>
+      <summary>Dropdown plot height in logical pixels</summary>
+      <description>
+        Height of each plot in the dropdown, before HiDPI scaling is applied.
+      </description>
+    </key>
+
+    <key name="menu-history-length" type="i">
+      <range min="8" max="120"/>
+      <default>60</default>
+      <summary>Samples retained per dropdown plot line</summary>
+      <description>
+        Length of the ring buffer backing each line of a dropdown plot. Shares
+        the panel buffer's ceiling so both stay bounded for the life of the
+        session.
       </description>
     </key>
 

@@ -37,11 +37,12 @@ class SystemTrayMonitorIndicator extends PanelMenu.Button {
      * @param {string} params.separator - separator style name
      * @param {number} params.historyLength - sparkline buffer size
      * @param {number} params.graphWidth - sparkline width in logical pixels
+     * @param {object} [params.menuGraphs] - dropdown plot configuration
      */
     _init(params) {
         const {
             metrics, extensionPath, separator, historyLength, graphWidth,
-            onOpenPreferences, onMenuOpened,
+            menuGraphs, onOpenPreferences, onMenuOpened,
         } = params;
 
         super._init(0.5, 'System Tray Monitor', false);
@@ -84,7 +85,8 @@ class SystemTrayMonitorIndicator extends PanelMenu.Button {
             metrics.map(m => m.provider),
             extensionPath,
             onOpenPreferences,
-            onMenuOpened);
+            onMenuOpened,
+            menuGraphs);
     }
 
     /**
@@ -112,12 +114,21 @@ class SystemTrayMonitorIndicator extends PanelMenu.Button {
     }
 
     /**
-     * Discards graph history so a resumed graph does not draw a line across the
-     * period polling was stopped.
+     * @param {number} length - samples to retain per plot line
+     */
+    setMenuHistoryLength(length) {
+        this._menu?.setHistoryLength(length);
+    }
+
+    /**
+     * Discards graph history, panel and dropdown alike, so a resumed graph does
+     * not draw a line across the period polling was stopped.
      */
     clearHistory() {
         for (const widget of this._widgets.values())
             widget.clearHistory();
+
+        this._menu?.clearHistory();
     }
 
     destroy() {
@@ -198,8 +209,10 @@ export default class SystemTrayMonitorExtension extends Extension {
      */
     _onSettingChanged(key) {
         // Anything that changes the shape of the widget tree.
-        const rebuilds = ['enabled-metrics', 'separator', 'graph-width'];
-        if (rebuilds.includes(key) || key.endsWith('-style') || key.endsWith('-custom')) {
+        const rebuilds = ['enabled-metrics', 'separator', 'graph-width',
+            'menu-graph-height'];
+        if (rebuilds.includes(key) || key.endsWith('-style') ||
+            key.endsWith('-custom') || key.endsWith('-menu-graph')) {
             this._rebuild();
             return;
         }
@@ -213,6 +226,12 @@ export default class SystemTrayMonitorExtension extends Extension {
         // rebuild and the graph does not blink.
         if (key === 'history-length') {
             this._indicator?.setHistoryLength(this._settings.get_int('history-length'));
+            return;
+        }
+
+        if (key === 'menu-history-length') {
+            this._indicator?.setMenuHistoryLength(
+                this._settings.get_int('menu-history-length'));
             return;
         }
 
@@ -245,6 +264,14 @@ export default class SystemTrayMonitorExtension extends Extension {
             separator: this._settings.get_string('separator'),
             historyLength: this._settings.get_int('history-length'),
             graphWidth: this._settings.get_int('graph-width'),
+            menuGraphs: {
+                enabled: new Set(providers
+                    .filter(provider =>
+                        this._settings.get_boolean(`${provider.id}-menu-graph`))
+                    .map(provider => provider.id)),
+                historyLength: this._settings.get_int('menu-history-length'),
+                height: this._settings.get_int('menu-graph-height'),
+            },
             onOpenPreferences: () => this.openPreferences(),
             onMenuOpened: () => this._poller.refresh(),
         });

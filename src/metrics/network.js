@@ -243,6 +243,20 @@ export class NetworkProvider {
     }
 
     /**
+     * Raw per-direction values for the dropdown's graph.
+     *
+     * Unformatted, because a graph scales against its own history rather than
+     * showing the numbers. The order matches detail(), so the line a colour
+     * identifies is the row of the same name just below it.
+     *
+     * @param {object|null} sample - reading from sample()
+     * @returns {Array<number|null>} receive then transmit, null where unknown
+     */
+    series(sample) {
+        return [sample?.rxRate ?? null, sample?.txRate ?? null];
+    }
+
+    /**
      * Receive and transmit separately, for the dropdown.
      *
      * The panel shows the sum, which answers "is the network busy?". This

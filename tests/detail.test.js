@@ -17,7 +17,7 @@ import {DiskProvider} from '../src/metrics/disk.js';
 import {MemoryProvider} from '../src/metrics/memory.js';
 import {NetworkProvider} from '../src/metrics/network.js';
 import {ThermalProvider} from '../src/metrics/thermal.js';
-import {assert, assertEqual, suite, test} from './harness.js';
+import {assert, assertEqual, assertNull, suite, test} from './harness.js';
 
 suite('detail');
 
@@ -141,6 +141,59 @@ test('disk detail uses its own bits setting, not the network one', () => {
 
     assertEqual(asBits[0].text, '8.0Mb/s');
     assertEqual(asBytes[0].text, '1.0MB/s', 'netAsBits must not affect disk');
+});
+
+test('network series separates the directions the panel sums', () => {
+    // The plot draws the same split the detail rows show, so a line's colour
+    // identifies a row of the same name just below it.
+    const network = new NetworkProvider();
+    const values = network.series({rxRate: 2000000, txRate: 500000});
+
+    assertEqual(values.length, 2);
+    assertEqual(values[0], 2000000);
+    assertEqual(values[1], 500000);
+});
+
+test('disk series separates reads from writes', () => {
+    const disk = new DiskProvider();
+    const values = disk.series({readRate: 12000000, writeRate: 3000000});
+
+    assertEqual(values.length, 2);
+    assertEqual(values[0], 12000000);
+    assertEqual(values[1], 3000000);
+});
+
+test('a missing reading is a gap in the plot, not a zero', () => {
+    // History records nulls so the line breaks across them. Reporting zero
+    // instead would draw a plausible dip to the baseline on the first tick
+    // after polling resumes.
+    const network = new NetworkProvider();
+    const values = network.series(null);
+
+    assertEqual(values.length, 2);
+    assertNull(values[0]);
+    assertNull(values[1]);
+});
+
+test('series lengths match the detail rows beneath them', () => {
+    // Two lines in a plot only earn their place if two rows explain them.
+    for (const [Provider, sample] of [[NetworkProvider, {rxRate: 1, txRate: 1}],
+        [DiskProvider, {readRate: 1, writeRate: 1}]]) {
+        const provider = new Provider();
+        assertEqual(provider.series(sample).length,
+            provider.detail(sample).length);
+    }
+});
+
+test('every provider offers series or magnitude for the dropdown plot', () => {
+    // The menu plots magnitude alone when a metric has nothing to split, so a
+    // provider with neither would open onto a permanently empty plot.
+    for (const Provider of [CpuProvider, MemoryProvider, ThermalProvider,
+        NetworkProvider, DiskProvider]) {
+        const provider = new Provider();
+        assert(provider.series !== undefined || provider.magnitude !== undefined,
+            `${provider.id} has nothing to plot`);
+    }
 });
 
 test('temperature detail names the sensor being read', () => {
