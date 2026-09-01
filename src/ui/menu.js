@@ -17,16 +17,48 @@
  * every tick, because a plot of the last minute is worth nothing if it only
  * covers the seconds since the menu was opened, and the cost is one bounded
  * array push per line, which is not in the same class as the parsing above.
+ *
+ * The process list is gated the same way as per-core CPU. Walking /proc for
+ * every pid is cheap enough while someone is looking, and wasted work on the
+ * panel timer, where nobody is.
  */
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import {ProcessTable} from '../metrics/processes.js';
 import {resolveIcon} from './icons.js';
 import {MenuGraphArea} from './renderers/glyphs.js';
+
+/**
+ * Sends SIGTERM to a pid.
+ *
+ * kill(2) is not on GLib, and importing Posix would add a GIR the
+ * preferences process does not have. Spawning `kill` keeps this in GLib,
+ * and argv (not a shell string) is what stops a pid from being interpreted
+ * as anything else.
+ *
+ * @param {number} pid - process to signal
+ */
+function endProcess(pid) {
+    if (!Number.isInteger(pid) || pid <= 1)
+        return;
+
+    try {
+        GLib.spawn_async(
+            null,
+            ['kill', '-TERM', String(pid)],
+            null,
+            GLib.SpawnFlags.SEARCH_PATH,
+            null);
+    } catch (error) {
+        logError(error, `system-tray-monitor: could not signal process ${pid}`);
+    }
+}
 
 /**
  * A metric's heading inside the menu: icon, full name, and the same value the
@@ -110,6 +142,56 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
 });
 
 /**
+ * One process in the compact list. Clickable, unlike the detail rows,
+ * because the action is the reason to show a pid at all. Rows that cannot
+ * be ended (init, the shell) drop the hover so they do not invite a click
+ * that then does nothing.
+ */
+const ProcessItem = GObject.registerClass(
+class ProcessItem extends PopupMenu.PopupBaseMenuItem {
+    _init() {
+        super._init({reactive: true, can_focus: true});
+
+        this._pid = 0;
+
+        this._label = new St.Label({
+            text: '',
+            style_class: 'system-tray-monitor-menu-label',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this.add_child(this._label);
+
+        this._value = new St.Label({
+            text: '',
+            style_class: 'system-tray-monitor-menu-value',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this.add_child(this._value);
+
+        this.connect('activate', () => {
+            if (this._pid > 1)
+                endProcess(this._pid);
+        });
+    }
+
+    /**
+     * @param {{pid: number, label: string, text: string, endable: boolean}} row
+     */
+    setRow(row) {
+        this._pid = row.endable ? row.pid : 0;
+        this.reactive = row.endable;
+        this.can_focus = row.endable;
+
+        if (this._label.text !== row.label)
+            this._label.text = row.label;
+
+        if (this._value.text !== row.text)
+            this._value.text = row.text;
+    }
+});
+
+/**
  * A metric's plot inside the menu: a history graph filling the row.
  */
 const GraphItem = GObject.registerClass(
@@ -171,12 +253,17 @@ export class MetricMenu {
      * @param {Set<string>} [graphs.enabled] - provider ids that get a plot
      * @param {number} [graphs.historyLength] - samples retained per line
      * @param {number} [graphs.height] - plot height in logical pixels
+     * @param {object} [processes] - compact process list configuration
+     * @param {boolean} [processes.enabled] - whether the section is shown
+     * @param {number} [processes.limit] - how many pids to keep
      */
     constructor(menu, providers, extensionPath, onOpenPreferences,
-        onOpened = () => {}, graphs = null) {
+        onOpened = () => {}, graphs = null, processes = null) {
         this._menu = menu;
         this._providers = providers;
         this._sections = new Map();
+        this._processTable = null;
+        this._processSection = null;
         this._isOpen = false;
 
         const plotted = graphs?.enabled ?? new Set();
@@ -203,7 +290,22 @@ export class MetricMenu {
             this._sections.set(provider.id, {header, graph, rows: [], provider});
         });
 
-        if (providers.length > 0)
+        if (processes?.enabled) {
+            if (providers.length > 0)
+                menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+            const header = new HeaderItem({
+                name: 'Processes',
+                iconName: 'application-x-executable-symbolic',
+            }, extensionPath);
+            menu.addMenuItem(header);
+
+            this._processTable = new ProcessTable();
+            this._processTable.setLimit(processes.limit ?? 8);
+            this._processSection = {header, rows: []};
+        }
+
+        if (providers.length > 0 || processes?.enabled)
             menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         const settings = new PopupMenu.PopupImageMenuItem(
@@ -227,6 +329,8 @@ export class MetricMenu {
             // open starts clean rather than reporting the whole closed period.
             for (const {provider} of this._sections.values())
                 provider.resetDetail?.();
+
+            this._processTable?.reset();
         });
     }
 
@@ -240,7 +344,7 @@ export class MetricMenu {
      *
      * The plots record first, on every tick, so their histories cover the
      * closed period. The rest returns immediately when closed, which is what
-     * keeps per-core parsing off the normal path.
+     * keeps per-core parsing and the process walk off the normal path.
      *
      * @param {Map<string, object|null>} readings - provider id to sample
      * @param {object} options - formatting options drawn from settings
@@ -263,6 +367,9 @@ export class MetricMenu {
 
             this._updateRows(section, section.provider.detail?.(sample, options) ?? []);
         }
+
+        if (this._processTable && this._processSection)
+            this._updateProcessRows(this._processTable.top(options));
     }
 
     /**
@@ -282,6 +389,15 @@ export class MetricMenu {
     clearHistory() {
         for (const {graph} of this._sections.values())
             graph?.clearHistory();
+
+        this._processTable?.reset();
+    }
+
+    /**
+     * @param {number} limit - rows to keep in the process list
+     */
+    setProcessLimit(limit) {
+        this._processTable?.setLimit(limit);
     }
 
     /**
@@ -337,6 +453,35 @@ export class MetricMenu {
     }
 
     /**
+     * Syncs the compact process list, creating or hiding rows as the count
+     * changes. Same lazy-insert pattern as the metric detail rows.
+     *
+     * @param {Array<{pid: number, label: string, text: string, endable: boolean}>} rows
+     */
+    _updateProcessRows(rows) {
+        const section = this._processSection;
+        if (!section)
+            return;
+
+        while (section.rows.length < rows.length) {
+            const item = new ProcessItem();
+            const position = this._menu._getMenuItems().indexOf(section.header) +
+                section.rows.length + 1;
+            this._menu.addMenuItem(item, position);
+            section.rows.push(item);
+        }
+
+        section.rows.forEach((item, index) => {
+            if (index < rows.length) {
+                item.setRow(rows[index]);
+                item.visible = true;
+            } else {
+                item.visible = false;
+            }
+        });
+    }
+
+    /**
      * Disconnects and drops everything. The menu's own items are destroyed by
      * the indicator that owns it.
      */
@@ -347,6 +492,8 @@ export class MetricMenu {
         }
 
         this._sections.clear();
+        this._processTable = null;
+        this._processSection = null;
         this._menu = null;
         this._providers = [];
     }

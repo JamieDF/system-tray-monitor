@@ -12,5 +12,9 @@ schemas/gschemas.compiled
 # JavaScript, so this never appears in a release.
 node_modules/
 
+# Fake /proc tree used by the process-list tests. Built at runtime into /tmp,
+# but ignore this path too so a leftover local copy cannot be committed.
+tests/fixtures/proc-processes/
+
 *~
 *.swp

@@ -243,5 +243,31 @@
       </description>
     </key>
 
+    <!--
+      Compact process list in the dropdown, not a panel metric. Walking /proc
+      for every pid is cheap enough while the menu is open and wasted work
+      on the panel timer, so this is never sampled with the door shut. The
+      count is small on purpose: the full table already lives in System Monitor.
+    -->
+    <key name="show-processes" type="b">
+      <default>true</default>
+      <summary>Show a process list in the dropdown</summary>
+      <description>
+        A short list of the busiest userspace processes, ranked by CPU share.
+        Clicking a process sends SIGTERM. Init and the shell itself are shown
+        but cannot be ended from here.
+      </description>
+    </key>
+
+    <key name="process-count" type="i">
+      <range min="3" max="15"/>
+      <default>8</default>
+      <summary>Processes shown in the dropdown</summary>
+      <description>
+        How many processes to keep in the compact list. Bounded so the dropdown
+        cannot grow into a process manager.
+      </description>
+    </key>
+
   </schema>
 </schemalist>

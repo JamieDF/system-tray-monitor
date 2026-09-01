@@ -6,7 +6,8 @@ top bar, beside the existing status icons.
 Every metric can be switched off independently and each one picks its own look,
 from a plain number to a live sparkline. Clicking the indicator opens a detail
 view with a history plot per metric, plus per-core CPU, swap, and network and
-disk split by direction.
+disk split by direction. A compact process list sits at the bottom of the
+dropdown: the busiest userspace processes by CPU share, click to send SIGTERM.
 
 ![The indicator in the top bar](docs/screenshots/panel.png)
 
