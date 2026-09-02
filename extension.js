@@ -38,11 +38,12 @@ class SystemTrayMonitorIndicator extends PanelMenu.Button {
      * @param {number} params.historyLength - sparkline buffer size
      * @param {number} params.graphWidth - sparkline width in logical pixels
      * @param {object} [params.menuGraphs] - dropdown plot configuration
+     * @param {object} [params.processes] - compact process list configuration
      */
     _init(params) {
         const {
             metrics, extensionPath, separator, historyLength, graphWidth,
-            menuGraphs, onOpenPreferences, onMenuOpened,
+            menuGraphs, processes, onOpenPreferences, onMenuOpened,
         } = params;
 
         super._init(0.5, 'System Tray Monitor', false);
@@ -86,7 +87,8 @@ class SystemTrayMonitorIndicator extends PanelMenu.Button {
             extensionPath,
             onOpenPreferences,
             onMenuOpened,
-            menuGraphs);
+            menuGraphs,
+            processes);
     }
 
     /**
@@ -118,6 +120,13 @@ class SystemTrayMonitorIndicator extends PanelMenu.Button {
      */
     setMenuHistoryLength(length) {
         this._menu?.setHistoryLength(length);
+    }
+
+    /**
+     * @param {number} limit - rows to keep in the dropdown process list
+     */
+    setProcessLimit(limit) {
+        this._menu?.setProcessLimit(limit);
     }
 
     /**
@@ -210,7 +219,7 @@ export default class SystemTrayMonitorExtension extends Extension {
     _onSettingChanged(key) {
         // Anything that changes the shape of the widget tree.
         const rebuilds = ['enabled-metrics', 'separator', 'graph-width',
-            'menu-graph-height'];
+            'menu-graph-height', 'show-processes'];
         if (rebuilds.includes(key) || key.endsWith('-style') ||
             key.endsWith('-custom') || key.endsWith('-menu-graph')) {
             this._rebuild();
@@ -232,6 +241,11 @@ export default class SystemTrayMonitorExtension extends Extension {
         if (key === 'menu-history-length') {
             this._indicator?.setMenuHistoryLength(
                 this._settings.get_int('menu-history-length'));
+            return;
+        }
+
+        if (key === 'process-count') {
+            this._indicator?.setProcessLimit(this._settings.get_int('process-count'));
             return;
         }
 
@@ -271,6 +285,10 @@ export default class SystemTrayMonitorExtension extends Extension {
                     .map(provider => provider.id)),
                 historyLength: this._settings.get_int('menu-history-length'),
                 height: this._settings.get_int('menu-graph-height'),
+            },
+            processes: {
+                enabled: this._settings.get_boolean('show-processes'),
+                limit: this._settings.get_int('process-count'),
             },
             onOpenPreferences: () => this.openPreferences(),
             onMenuOpened: () => this._poller.refresh(),

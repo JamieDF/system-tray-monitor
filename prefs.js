@@ -753,6 +753,29 @@ export default class SystemTrayMonitorPreferences extends ExtensionPreferences {
             max: 120,
         }));
 
+        const processes = new Adw.PreferencesGroup({
+            title: 'Dropdown processes',
+            description: 'A short top list, not a process manager. Click a process to end it.',
+        });
+        page.add(processes);
+
+        const showProcesses = new Adw.SwitchRow({
+            title: 'Show processes',
+            subtitle: 'Busiest userspace processes, by CPU share',
+            active: settings.get_boolean('show-processes'),
+        });
+        showProcesses.connect('notify::active',
+            () => settings.set_boolean('show-processes', showProcesses.active));
+        processes.add(showProcesses);
+
+        processes.add(this._spinRow(settings, {
+            key: 'process-count',
+            title: 'How many',
+            subtitle: 'Rows kept in the list',
+            min: 3,
+            max: 15,
+        }));
+
         return page;
     }
 

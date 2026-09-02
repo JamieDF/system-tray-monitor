@@ -57,11 +57,8 @@ gnome-extensions enable system-tray-monitor@jamiedf.github.io
 
 Two ways round it:
 
-- **Log out and back in.** Reliable, disruptive.
-- **Use a nested shell.** Starts a second GNOME session in a window with your current code, leaving your real session alone:
-  ```bash
-  dbus-run-session -- gnome-shell --wayland --wayland-display=wayland-99
-  ```
+- **Log out and back in.** The reliable one.
+- **A nested shell**, optional, if you already have mutter's development kit. On GNOME 49 and 50 that is `dbus-run-session -- gnome-shell --devkit`. A plain `--wayland` compositor tries to take over the seat and fails with EBUSY.
 
 `prefs.js` is exempt. It runs in its own short-lived process, so closing and reopening the preferences window is enough to pick up changes. Anything shared between the two, like `src/ui/renderers/presets.js`, will look updated in preferences and stale in the panel until you restart the shell.
 

@@ -108,6 +108,17 @@
     font-weight: bold;
 }
 
+/*
+ * Wider than the shell's 15em popup-menu floor. Process names and the
+ * graph tiles need the extra columns; 15em is what made the current
+ * dropdown a skinny strip. Capped so it does not become a banner on a
+ * wide monitor.
+ */
+.popup-menu.system-tray-monitor-menu {
+    min-width: 28em;
+    max-width: 36em;
+}
+
 .system-tray-monitor-menu-total,
 .system-tray-monitor-menu-value {
     font-feature-settings: "tnum";
@@ -115,6 +126,50 @@
 
 .system-tray-monitor-menu-label {
     padding-left: 28px;
+}
+
+.system-tray-monitor-menu-body {
+    spacing: 12px;
+    padding: 2px 4px 0;
+}
+
+.system-tray-monitor-menu-tile {
+    padding: 4px 6px 2px;
+}
+
+.system-tray-monitor-menu-tile-header {
+    spacing: 8px;
+}
+
+.system-tray-monitor-menu-tile-name {
+    font-weight: bold;
+}
+
+.system-tray-monitor-menu-tile-value {
+    font-feature-settings: "tnum";
+}
+
+.system-tray-monitor-menu-process-header {
+    padding: 2px 12px;
+    opacity: 0.7;
+}
+
+.system-tray-monitor-menu-process-name {
+    min-width: 6em;
+}
+
+.system-tray-monitor-menu-col-cpu,
+.system-tray-monitor-menu-col-mem {
+    font-feature-settings: "tnum";
+    text-align: right;
+}
+
+.system-tray-monitor-menu-col-cpu {
+    min-width: 3.4em;
+}
+
+.system-tray-monitor-menu-col-mem {
+    min-width: 4.4em;
 }
 
 /*
