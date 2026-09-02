@@ -18,6 +18,7 @@ import {
     isKernelThread,
     isPidEntry,
     parsePidStat,
+    parseStatm,
     pickTop,
     PF_KTHREAD,
 } from '../src/metrics/processes.js';
@@ -73,6 +74,7 @@ function makeProcRoot() {
         const dir = `${root}/${proc.pid}`;
         GLib.mkdir_with_parents(dir, 0o755);
         GLib.file_set_contents(`${dir}/stat`, `${statLine(proc)}\n`);
+        GLib.file_set_contents(`${dir}/statm`, `200 ${proc.pid === 100 ? 400 : 50} 10 1 0 20 0\n`);
     }
 
     return root;
@@ -118,6 +120,12 @@ test('ignores short and malformed stat lines', () => {
     assertNull(parsePidStat('12 S 0 0 0'));
     assertNull(parsePidStat('12 () S 0 0 0 0 0 0 0 0 0 0 0 0'));
     assertNull(parsePidStat('not-a-stat'));
+});
+
+test('statm RSS is the second field, in pages', () => {
+    assertEqual(parseStatm('100 50 10 1 0 20 0', 4096), 50 * 4096);
+    assertNull(parseStatm('100'));
+    assertNull(parseStatm(null));
 });
 
 test('kernel threads are recognised from PF_KTHREAD', () => {
@@ -196,6 +204,7 @@ test('the table skips kernel threads and ranks the fixture by ticks', () => {
     assertEqual(rows[0].text, '--%', 'no baseline yet');
     assertEqual(rows.find(row => row.pid === 1).endable, false, 'pid 1');
     assertEqual(rows.find(row => row.pid === 100).endable, true);
+    assertEqual(rows[0].memory, '1.6MiB', 'firefox RSS from fixture statm');
 });
 
 test('the second sample reports a real share against the aggregate', () => {

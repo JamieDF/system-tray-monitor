@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-import {formatGibibytes, formatPercent, kibToBytes} from '../src/metrics/units.js';
+import {formatGibibytes, formatIecBytes, formatPercent, kibToBytes} from '../src/metrics/units.js';
 import {assertEqual, assertNull, suite, test} from './harness.js';
 
 suite('units');
@@ -62,4 +62,12 @@ test('kibToBytes multiplies by 1024', () => {
     assertEqual(kibToBytes(0), 0);
     assertNull(kibToBytes(null));
     assertNull(kibToBytes(NaN));
+});
+
+test('process-sized values use MiB and KiB rather than 0.0GiB', () => {
+    assertEqual(formatIecBytes(12 * 1024), '12KiB');
+    assertEqual(formatIecBytes(1.4 * 1024 * 1024), '1.4MiB');
+    assertEqual(formatIecBytes(48 * 1024 * 1024), '48MiB');
+    assertEqual(formatIecBytes(2 * GIB), '2.0GiB');
+    assertEqual(formatIecBytes(null), '--');
 });

@@ -18,7 +18,7 @@ import GLib from 'gi://GLib';
 
 import {parseAggregate} from './cpu.js';
 import {listDir, readFile, readLines} from './procfs.js';
-import {formatPercent} from './units.js';
+import {formatIecBytes, formatPercent} from './units.js';
 
 const PROC_ROOT = '/proc';
 
@@ -83,6 +83,32 @@ export function parsePidStat(text) {
         return null;
 
     return {pid, comm, flags, ticks: utime + stime};
+}
+
+/**
+ * Resident set size from /proc/[pid]/statm.
+ *
+ * The second field is pages, not bytes. 4096 is the page size on every
+ * machine this extension targets; injecting it keeps the tests off the
+ * host's actual page size.
+ *
+ * @param {string|null} text - contents of a statm file
+ * @param {number} [pageSize=4096] - bytes per page
+ * @returns {number|null} RSS in bytes, or null if unparseable
+ */
+export function parseStatm(text, pageSize = 4096) {
+    if (typeof text !== 'string' || !Number.isFinite(pageSize) || pageSize <= 0)
+        return null;
+
+    const parts = text.trim().split(/\s+/);
+    if (parts.length < 2)
+        return null;
+
+    const resident = Number.parseInt(parts[1], 10);
+    if (!Number.isFinite(resident) || resident < 0)
+        return null;
+
+    return resident * pageSize;
 }
 
 /**
@@ -226,7 +252,7 @@ export class ProcessTable {
      *
      * @param {object} [options] - formatting options
      * @param {boolean} [options.showPercentSign] - append a percent sign
-     * @returns {Array<{pid: number, label: string, text: string, endable: boolean}>}
+     * @returns {Array<{pid: number, label: string, text: string, memory: string, endable: boolean}>}
      */
     top(options = {}) {
         const {showPercentSign = true} = options;
@@ -260,12 +286,20 @@ export class ProcessTable {
         this._previous = new Map(processes.map(proc => [proc.pid, {ticks: proc.ticks}]));
         this._previousTotal = total;
 
-        return pickTop(processes, this._limit).map(proc => ({
-            pid: proc.pid,
-            label: proc.comm,
-            text: formatPercent(proc.percent, {withSign: showPercentSign}),
-            endable: canEnd(proc.pid, this._selfPid),
-        }));
+        // RSS is only opened for the rows that will be shown. Reading it for
+        // every pid would double the /proc walk for a column nobody asked
+        // to rank by.
+        return pickTop(processes, this._limit).map(proc => {
+            const rss = parseStatm(readFile(`${this._procRoot}/${proc.pid}/statm`));
+
+            return {
+                pid: proc.pid,
+                label: proc.comm,
+                text: formatPercent(proc.percent, {withSign: showPercentSign}),
+                memory: formatIecBytes(rss),
+                endable: canEnd(proc.pid, this._selfPid),
+            };
+        });
     }
 
     /**

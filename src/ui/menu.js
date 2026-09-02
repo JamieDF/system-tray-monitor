@@ -4,23 +4,19 @@
  *
  * The dropdown shown when the indicator is clicked.
  *
- * Its job is the detail the panel has no room for: which core is busy rather
- * than the average, which direction the network traffic is going, whether swap
- * is in use, which sensor the temperature comes from.
+ * The body is a custom actor, not a stack of PopupMenuItems. A grid of
+ * metric plots plus a full-width process table cannot be expressed as a
+ * single column of menu rows, which is all PopupMenu offers. Settings is
+ * still a real menu item, pinned below the scroll, so it stays reachable.
  *
- * Detail is only computed while this is open. That is not a micro-optimisation:
- * per-core parsing walks one line per core on every tick, forever, to serve a
- * menu that is closed almost all of the time. The providers keep it out of
- * sample() for that reason, and this file is what turns it on and off.
+ * Plots are fed on every tick, open or closed. A history that started at
+ * each open would be empty every time. The process walk stays gated on
+ * the menu being open: that is hundreds of /proc reads, not one push per
+ * line.
  *
- * The graphs are the exception to that gating. Their histories are fed on
- * every tick, because a plot of the last minute is worth nothing if it only
- * covers the seconds since the menu was opened, and the cost is one bounded
- * array push per line, which is not in the same class as the parsing above.
- *
- * The process list is gated the same way as per-core CPU. Walking /proc for
- * every pid is cheap enough while someone is looking, and wasted work on the
- * panel timer, where nobody is.
+ * Per-core rows are deliberately absent from this layout. They made the
+ * first screen taller than a laptop; the grid is what you open the menu
+ * to see.
  */
 
 import Clutter from 'gi://Clutter';
@@ -28,11 +24,14 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {ProcessTable} from '../metrics/processes.js';
-import {resolveIcon} from './icons.js';
 import {MenuGraphArea} from './renderers/glyphs.js';
+
+/** How many metric tiles sit on one row of the grid. */
+const GRID_COLUMNS = 2;
 
 /**
  * Sends SIGTERM to a pid.
@@ -61,181 +60,150 @@ function endProcess(pid) {
 }
 
 /**
- * A metric's heading inside the menu: icon, full name, and the same value the
- * panel is showing.
+ * One metric in the grid: name, current value, and its history plot.
  */
-const HeaderItem = GObject.registerClass(
-class HeaderItem extends PopupMenu.PopupBaseMenuItem {
+const MetricTile = GObject.registerClass(
+class MetricTile extends St.BoxLayout {
     /**
-     * @param {object} provider - the metric
-     * @param {string} extensionPath - for resolving bundled icons
+     * @param {object} params
+     * @param {object} params.provider - the metric
+     * @param {object|null} params.graphs - plot config, or null to hide the plot
      */
-    _init(provider, extensionPath) {
-        // Not reactive: this is a label, not a control. Leaving it clickable
-        // would give it a hover highlight that invites a click doing nothing.
-        super._init({reactive: false, can_focus: false});
+    _init({provider, graphs}) {
+        super._init({
+            vertical: true,
+            x_expand: true,
+            y_expand: true,
+            style_class: 'system-tray-monitor-menu-tile',
+        });
 
-        this.add_child(new St.Icon({
-            gicon: resolveIcon(extensionPath, provider.iconName),
-            style_class: 'popup-menu-icon',
-            y_align: Clutter.ActorAlign.CENTER,
-        }));
+        this._provider = provider;
 
-        this.add_child(new St.Label({
+        const header = new St.BoxLayout({
+            x_expand: true,
+            style_class: 'system-tray-monitor-menu-tile-header',
+        });
+
+        header.add_child(new St.Label({
             text: provider.name,
-            style_class: 'system-tray-monitor-menu-heading',
+            style_class: 'system-tray-monitor-menu-tile-name',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         }));
 
         this._value = new St.Label({
             text: '',
-            style_class: 'system-tray-monitor-menu-total',
+            style_class: 'system-tray-monitor-menu-tile-value',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this.add_child(this._value);
+        header.add_child(this._value);
+        this.add_child(header);
+
+        this._area = null;
+
+        if (graphs) {
+            this._area = new MenuGraphArea({
+                metricId: provider.id,
+                seriesCount: provider.series ? provider.series(null).length : 1,
+                historyLength: graphs.historyLength,
+                height: graphs.height,
+            });
+            this.add_child(this._area);
+        }
     }
 
     /**
-     * @param {string} text - the current panel value
+     * @param {object|null} sample - reading from sample()
+     * @param {object} options - formatting options
      */
-    setValue(text) {
+    update(sample, options) {
+        const text = this._provider.format(sample, options);
         if (this._value.text !== text)
             this._value.text = text;
     }
-});
 
-/**
- * One detail line: a name on the left, a value on the right.
- */
-const DetailItem = GObject.registerClass(
-class DetailItem extends PopupMenu.PopupBaseMenuItem {
-    _init() {
-        super._init({reactive: false, can_focus: false});
-
-        this._label = new St.Label({
-            text: '',
-            style_class: 'system-tray-monitor-menu-label',
-            x_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this.add_child(this._label);
-
-        this._value = new St.Label({
-            text: '',
-            style_class: 'system-tray-monitor-menu-value',
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this.add_child(this._value);
+    /**
+     * @param {Array<number|null>} values - one sample per plot line
+     */
+    setValues(values) {
+        this._area?.setValues(values);
     }
 
     /**
-     * @param {{label: string, text: string}} row - the detail to show
+     * @param {number} length - samples to retain per line
      */
-    setRow(row) {
-        if (this._label.text !== row.label)
-            this._label.text = row.label;
+    setHistoryLength(length) {
+        this._area?.setHistoryLength(length);
+    }
 
-        if (this._value.text !== row.text)
-            this._value.text = row.text;
+    clearHistory() {
+        this._area?.clearHistory();
     }
 });
 
 /**
- * One process in the compact list. Clickable, unlike the detail rows,
- * because the action is the reason to show a pid at all. Rows that cannot
- * be ended (init, the shell) drop the hover so they do not invite a click
- * that then does nothing.
+ * One process row: name, CPU share, RSS. Clickable when ending is allowed.
  */
-const ProcessItem = GObject.registerClass(
-class ProcessItem extends PopupMenu.PopupBaseMenuItem {
+const ProcessRow = GObject.registerClass(
+class ProcessRow extends St.BoxLayout {
     _init() {
-        super._init({reactive: true, can_focus: true});
+        super._init({
+            x_expand: true,
+            reactive: true,
+            track_hover: true,
+            can_focus: true,
+            style_class: 'popup-menu-item system-tray-monitor-menu-process',
+        });
 
         this._pid = 0;
 
-        this._label = new St.Label({
+        this._name = new St.Label({
             text: '',
-            style_class: 'system-tray-monitor-menu-label',
+            style_class: 'system-tray-monitor-menu-process-name',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this.add_child(this._label);
+        this.add_child(this._name);
 
-        this._value = new St.Label({
+        this._cpu = new St.Label({
             text: '',
-            style_class: 'system-tray-monitor-menu-value',
+            style_class: 'system-tray-monitor-menu-col-cpu',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this.add_child(this._value);
+        this.add_child(this._cpu);
 
-        this.connect('activate', () => {
+        this._memory = new St.Label({
+            text: '',
+            style_class: 'system-tray-monitor-menu-col-mem',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this.add_child(this._memory);
+
+        this.connect('button-release-event', () => {
             if (this._pid > 1)
                 endProcess(this._pid);
+
+            return Clutter.EVENT_STOP;
         });
     }
 
     /**
-     * @param {{pid: number, label: string, text: string, endable: boolean}} row
+     * @param {{pid: number, label: string, text: string, memory: string, endable: boolean}} row
      */
     setRow(row) {
         this._pid = row.endable ? row.pid : 0;
         this.reactive = row.endable;
         this.can_focus = row.endable;
+        this.track_hover = row.endable;
 
-        if (this._label.text !== row.label)
-            this._label.text = row.label;
+        if (this._name.text !== row.label)
+            this._name.text = row.label;
 
-        if (this._value.text !== row.text)
-            this._value.text = row.text;
-    }
-});
+        if (this._cpu.text !== row.text)
+            this._cpu.text = row.text;
 
-/**
- * A metric's plot inside the menu: a history graph filling the row.
- */
-const GraphItem = GObject.registerClass(
-class GraphItem extends PopupMenu.PopupBaseMenuItem {
-    /**
-     * @param {object} provider - the metric being plotted
-     * @param {object} graphs - plot configuration drawn from settings
-     * @param {number} graphs.historyLength - samples retained per line
-     * @param {number} graphs.height - plot height in logical pixels
-     */
-    _init(provider, graphs) {
-        super._init({reactive: false, can_focus: false});
-
-        // series(null) is a valid call and reveals the line count without
-        // needing a reading, the same way detail(null) reveals the row shape.
-        this._area = new MenuGraphArea({
-            metricId: provider.id,
-            seriesCount: provider.series ? provider.series(null).length : 1,
-            historyLength: graphs.historyLength,
-            height: graphs.height,
-        });
-        this.add_child(this._area);
-    }
-
-    /**
-     * @param {Array<number|null>} values - one sample per line
-     */
-    setValues(values) {
-        this._area.setValues(values);
-    }
-
-    /**
-     * @param {number} length - number of samples to retain
-     */
-    setHistoryLength(length) {
-        this._area.setHistoryLength(length);
-    }
-
-    /**
-     * Discards history, so a resumed plot does not draw a line across a period
-     * when polling was stopped.
-     */
-    clearHistory() {
-        this._area.clearHistory();
+        if (this._memory.text !== row.memory)
+            this._memory.text = row.memory;
     }
 });
 
@@ -246,7 +214,7 @@ export class MetricMenu {
     /**
      * @param {PopupMenu.PopupMenu} menu - the indicator's menu
      * @param {object[]} providers - active providers, in panel order
-     * @param {string} extensionPath - for resolving bundled icons
+     * @param {string} extensionPath - kept for the caller; tiles label by name
      * @param {Function} onOpenPreferences - invoked by the settings item
      * @param {Function} [onOpened] - invoked when the menu becomes visible
      * @param {object} [graphs] - plot configuration drawn from settings
@@ -261,49 +229,39 @@ export class MetricMenu {
         onOpened = () => {}, graphs = null, processes = null) {
         this._menu = menu;
         this._providers = providers;
-        this._sections = new Map();
+        this._tiles = new Map();
         this._processTable = null;
-        this._processSection = null;
+        this._processRows = [];
+        this._processBox = null;
         this._isOpen = false;
 
-        const plotted = graphs?.enabled ?? new Set();
+        // The shell's .popup-menu is 15em. That is why this read as a
+        // receipt. The class is on the boxpointer so it beats that rule.
+        menu.actor.add_style_class_name('system-tray-monitor-menu');
 
-        providers.forEach((provider, index) => {
-            if (index > 0)
-                menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-            const header = new HeaderItem(provider, extensionPath);
-            menu.addMenuItem(header);
-
-            // The plot sits between the heading and the detail rows. It is
-            // what the menu was opened to see; the rows are the numbers
-            // behind it.
-            let graph = null;
-
-            if (plotted.has(provider.id)) {
-                graph = new GraphItem(provider, graphs);
-                menu.addMenuItem(graph);
-            }
-
-            // Detail rows are created lazily, because how many there are is not
-            // known until the metric is asked. Core count is the obvious case.
-            this._sections.set(provider.id, {header, graph, rows: [], provider});
+        this._body = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            style_class: 'system-tray-monitor-menu-body',
         });
 
-        if (processes?.enabled) {
-            if (providers.length > 0)
-                menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const scroll = new St.ScrollView({
+            style_class: 'system-tray-monitor-menu-scroll',
+            overlay_scrollbars: true,
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            x_expand: true,
+            y_expand: true,
+            child: this._body,
+        });
+        scroll.clip_to_allocation = true;
+        menu.box.add_child(scroll);
+        this._scroll = scroll;
 
-            const header = new HeaderItem({
-                name: 'Processes',
-                iconName: 'application-x-executable-symbolic',
-            }, extensionPath);
-            menu.addMenuItem(header);
+        this._buildGrid(providers, graphs);
 
-            this._processTable = new ProcessTable();
-            this._processTable.setLimit(processes.limit ?? 8);
-            this._processSection = {header, rows: []};
-        }
+        if (processes?.enabled)
+            this._buildProcessTable(processes.limit ?? 8);
 
         if (providers.length > 0 || processes?.enabled)
             menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
@@ -317,20 +275,20 @@ export class MetricMenu {
             this._isOpen = open;
 
             if (open) {
-                // Fill in from the readings already in hand rather than showing
-                // an empty menu until the next tick, which at the default
-                // interval would be up to two seconds of nothing.
+                this._fitToWorkArea();
                 onOpened();
                 return;
             }
 
-            // Providers holding per-core baselines have nothing useful on the
-            // first tick after opening. Dropping them on close means the next
-            // open starts clean rather than reporting the whole closed period.
-            for (const {provider} of this._sections.values())
+            for (const provider of this._providers)
                 provider.resetDetail?.();
 
             this._processTable?.reset();
+        });
+
+        this._monitorsId = Main.layoutManager.connect('monitors-changed', () => {
+            if (this._isOpen)
+                this._fitToWorkArea();
         });
     }
 
@@ -342,53 +300,48 @@ export class MetricMenu {
     /**
      * Applies a tick's readings.
      *
-     * The plots record first, on every tick, so their histories cover the
-     * closed period. The rest returns immediately when closed, which is what
-     * keeps per-core parsing and the process walk off the normal path.
+     * Plots record first, on every tick. The process walk returns immediately
+     * when closed.
      *
      * @param {Map<string, object|null>} readings - provider id to sample
      * @param {object} options - formatting options drawn from settings
      */
     update(readings, options) {
-        for (const [id, section] of this._sections) {
-            if (readings.has(id))
-                section.graph?.setValues(this._lineValues(section.provider, readings.get(id)));
+        for (const provider of this._providers) {
+            const tile = this._tiles.get(provider.id);
+            if (!tile || !readings.has(provider.id))
+                continue;
+
+            tile.setValues(this._lineValues(provider, readings.get(provider.id)));
         }
 
         if (!this._isOpen)
             return;
 
-        for (const [id, section] of this._sections) {
-            if (!readings.has(id))
-                continue;
-
-            const sample = readings.get(id);
-            section.header.setValue(section.provider.format(sample, options));
-
-            this._updateRows(section, section.provider.detail?.(sample, options) ?? []);
+        for (const provider of this._providers) {
+            const tile = this._tiles.get(provider.id);
+            if (tile && readings.has(provider.id))
+                tile.update(readings.get(provider.id), options);
         }
 
-        if (this._processTable && this._processSection)
-            this._updateProcessRows(this._processTable.top(options));
+        if (this._processTable)
+            this._syncProcessRows(this._processTable.top(options));
     }
 
     /**
-     * Resizes each plot's buffers after a settings change.
-     *
-     * @param {number} length - samples to retain per line
+     * @param {number} length - samples to retain per plot line
      */
     setHistoryLength(length) {
-        for (const {graph} of this._sections.values())
-            graph?.setHistoryLength(length);
+        for (const tile of this._tiles.values())
+            tile.setHistoryLength(length);
     }
 
     /**
-     * Discards plot history alongside the panel's, so a resumed plot does not
-     * draw a line across the period polling was stopped.
+     * Discards plot history alongside the panel's.
      */
     clearHistory() {
-        for (const {graph} of this._sections.values())
-            graph?.clearHistory();
+        for (const tile of this._tiles.values())
+            tile.clearHistory();
 
         this._processTable?.reset();
     }
@@ -401,12 +354,146 @@ export class MetricMenu {
     }
 
     /**
-     * The values a section's plot should record.
+     * Lays out one tile per enabled metric, left to right then down.
      *
-     * Metrics with a direction to separate say so through series(). The rest
-     * plot the same single magnitude the panel sparkline uses, which keeps
-     * this from growing a per-metric branch.
+     * @param {object[]} providers - active metrics in panel order
+     * @param {object|null} graphs - plot configuration
+     */
+    _buildGrid(providers, graphs) {
+        if (providers.length === 0)
+            return;
+
+        const plotted = graphs?.enabled ?? new Set();
+        const layout = new Clutter.GridLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            column_homogeneous: true,
+            column_spacing: 8,
+            row_spacing: 8,
+        });
+        const grid = new St.Widget({
+            layout_manager: layout,
+            x_expand: true,
+            style_class: 'system-tray-monitor-menu-grid',
+        });
+
+        providers.forEach((provider, index) => {
+            const tile = new MetricTile({
+                provider,
+                graphs: plotted.has(provider.id) ? graphs : null,
+            });
+            layout.attach(tile, index % GRID_COLUMNS, Math.floor(index / GRID_COLUMNS), 1, 1);
+            this._tiles.set(provider.id, tile);
+        });
+
+        this._body.add_child(grid);
+    }
+
+    /**
+     * @param {number} limit - how many pids to keep
+     */
+    _buildProcessTable(limit) {
+        this._processTable = new ProcessTable();
+        this._processTable.setLimit(limit);
+
+        const heading = new St.Label({
+            text: 'Processes',
+            style_class: 'system-tray-monitor-menu-heading',
+        });
+        this._body.add_child(heading);
+
+        const header = new St.BoxLayout({
+            x_expand: true,
+            style_class: 'system-tray-monitor-menu-process-header',
+        });
+        header.add_child(new St.Label({
+            text: 'Process',
+            style_class: 'system-tray-monitor-menu-process-name',
+            x_expand: true,
+        }));
+        header.add_child(new St.Label({
+            text: 'CPU',
+            style_class: 'system-tray-monitor-menu-col-cpu',
+        }));
+        header.add_child(new St.Label({
+            text: 'Memory',
+            style_class: 'system-tray-monitor-menu-col-mem',
+        }));
+        this._body.add_child(header);
+
+        this._processBox = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            style_class: 'system-tray-monitor-menu-process-list',
+        });
+        this._body.add_child(this._processBox);
+    }
+
+    /**
+     * Caps the scroll pane to whatever monitor the indicator is on.
      *
+     * There is no window size to set. The shell sizes panel menus from the
+     * work area, and this does the same for the inner pane, measuring the
+     * Settings row rather than guessing a margin. CSS max-height is in
+     * logical pixels, the work area is not, so the scale factor has to
+     * come along.
+     */
+    _fitToWorkArea() {
+        if (!this._scroll || !this._menu?.sourceActor)
+            return;
+
+        const index = Main.layoutManager.findIndexForActor(this._menu.sourceActor);
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(
+            index >= 0 ? index : Main.layoutManager.primaryIndex);
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+
+        const available = workArea.height
+            - this._menu.actor.margin_top
+            - this._menu.actor.margin_bottom
+            - this._themeVertical(this._menu.actor)
+            - this._footerHeight();
+
+        const maxHeight = Math.max(120, Math.round(available / scale));
+        this._scroll.style = `max-height: ${maxHeight}px;`;
+    }
+
+    /**
+     * Height of every sibling below the scroll pane, in physical pixels.
+     *
+     * @returns {number} Settings row, separator, and any future chrome
+     */
+    _footerHeight() {
+        let height = 0;
+
+        for (const child of this._menu.box.get_children()) {
+            if (child === this._scroll || !child.visible)
+                continue;
+
+            const [, natural] = child.get_preferred_height(-1);
+            height += natural;
+        }
+
+        return height;
+    }
+
+    /**
+     * Padding and border from the theme, in physical pixels.
+     *
+     * @param {Clutter.Actor} actor - typically the boxpointer
+     * @returns {number} vertical chrome
+     */
+    _themeVertical(actor) {
+        try {
+            const node = actor.get_theme_node();
+            return node.get_padding(St.Side.TOP)
+                + node.get_padding(St.Side.BOTTOM)
+                + node.get_border_width(St.Side.TOP)
+                + node.get_border_width(St.Side.BOTTOM);
+        } catch {
+            return 0;
+        }
+    }
+
+    /**
      * @param {object} provider - the metric being plotted
      * @param {object|null} sample - reading from sample()
      * @returns {Array<number|null>} one value per line
@@ -419,59 +506,19 @@ export class MetricMenu {
     }
 
     /**
-     * Syncs a section's detail rows to the data, creating or hiding rows as the
-     * count changes.
-     *
-     * @param {object} section - the section being updated
-     * @param {Array<{label: string, text: string}>} rows - current detail
+     * @param {Array<{pid: number, label: string, text: string, memory: string, endable: boolean}>} rows
      */
-    _updateRows(section, rows) {
-        while (section.rows.length < rows.length) {
-            const item = new DetailItem();
-
-            // Inserted directly after the heading, or the plot when there is
-            // one, and any rows already there, so a section's rows stay
-            // together rather than landing at the end of the whole menu.
-            const anchor = section.graph ?? section.header;
-            const position = this._menu._getMenuItems().indexOf(anchor) +
-                section.rows.length + 1;
-            this._menu.addMenuItem(item, position);
-            section.rows.push(item);
-        }
-
-        section.rows.forEach((item, index) => {
-            if (index < rows.length) {
-                item.setRow(rows[index]);
-                item.visible = true;
-            } else {
-                // Kept rather than destroyed. Core count does not change, and a
-                // metric that briefly reports fewer rows should not thrash the
-                // widget tree.
-                item.visible = false;
-            }
-        });
-    }
-
-    /**
-     * Syncs the compact process list, creating or hiding rows as the count
-     * changes. Same lazy-insert pattern as the metric detail rows.
-     *
-     * @param {Array<{pid: number, label: string, text: string, endable: boolean}>} rows
-     */
-    _updateProcessRows(rows) {
-        const section = this._processSection;
-        if (!section)
+    _syncProcessRows(rows) {
+        if (!this._processBox)
             return;
 
-        while (section.rows.length < rows.length) {
-            const item = new ProcessItem();
-            const position = this._menu._getMenuItems().indexOf(section.header) +
-                section.rows.length + 1;
-            this._menu.addMenuItem(item, position);
-            section.rows.push(item);
+        while (this._processRows.length < rows.length) {
+            const item = new ProcessRow();
+            this._processBox.add_child(item);
+            this._processRows.push(item);
         }
 
-        section.rows.forEach((item, index) => {
+        this._processRows.forEach((item, index) => {
             if (index < rows.length) {
                 item.setRow(rows[index]);
                 item.visible = true;
@@ -491,9 +538,17 @@ export class MetricMenu {
             this._openStateId = 0;
         }
 
-        this._sections.clear();
+        if (this._monitorsId) {
+            Main.layoutManager.disconnect(this._monitorsId);
+            this._monitorsId = 0;
+        }
+
+        this._tiles.clear();
+        this._processRows = [];
+        this._processBox = null;
         this._processTable = null;
-        this._processSection = null;
+        this._body = null;
+        this._scroll = null;
         this._menu = null;
         this._providers = [];
     }

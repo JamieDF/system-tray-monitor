@@ -66,6 +66,34 @@ export function formatGibibytes(bytes, options = {}) {
     return withUnit ? `${value}GiB` : `${value}`;
 }
 
+const KIB = 1024;
+const MIB = 1024 * 1024;
+
+/**
+ * Formats a byte count that may be much smaller than a gibibyte.
+ *
+ * Process RSS is the reason this exists. formatGibibytes would render a
+ * 12 MiB helper as "0.0GiB", which is true and also useless in a table.
+ *
+ * @param {number|null} bytes - value to format
+ * @returns {string} compact IEC figure, or a placeholder if unknown
+ */
+export function formatIecBytes(bytes) {
+    if (bytes === null || bytes === undefined || !Number.isFinite(bytes) || bytes < 0)
+        return UNKNOWN;
+
+    if (bytes >= BYTES_PER_GIB)
+        return formatGibibytes(bytes);
+
+    if (bytes >= MIB) {
+        const scaled = bytes / MIB;
+        const places = scaled >= 10 ? 0 : 1;
+        return `${scaled.toFixed(places)}MiB`;
+    }
+
+    return `${Math.round(bytes / KIB)}KiB`;
+}
+
 /**
  * Formats a percentage.
  *

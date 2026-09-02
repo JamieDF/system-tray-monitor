@@ -4,10 +4,9 @@ A GNOME Shell extension showing CPU, memory, temperature, network and disk in th
 top bar, beside the existing status icons.
 
 Every metric can be switched off independently and each one picks its own look,
-from a plain number to a live sparkline. Clicking the indicator opens a detail
-view with a history plot per metric, plus per-core CPU, swap, and network and
-disk split by direction. A compact process list sits at the bottom of the
-dropdown: the busiest userspace processes by CPU share, click to send SIGTERM.
+from a plain number to a live sparkline. Clicking the indicator opens a wider
+dropdown: history plots in a two-column grid, then a process table ranked by
+CPU share. Click a process to send SIGTERM.
 
 ![The indicator in the top bar](docs/screenshots/panel.png)
 
