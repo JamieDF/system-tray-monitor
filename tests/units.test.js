@@ -69,5 +69,7 @@ test('process-sized values use MiB and KiB rather than 0.0GiB', () => {
     assertEqual(formatIecBytes(1.4 * 1024 * 1024), '1.4MiB');
     assertEqual(formatIecBytes(48 * 1024 * 1024), '48MiB');
     assertEqual(formatIecBytes(2 * GIB), '2.0GiB');
+    assertEqual(formatIecBytes(0), '0KiB');
     assertEqual(formatIecBytes(null), '--');
+    assertEqual(formatIecBytes(-1), '--');
 });

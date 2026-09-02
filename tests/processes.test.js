@@ -68,13 +68,18 @@ function makeProcRoot() {
         {pid: 100, comm: 'firefox', utime: 400, stime: 50},
         {pid: 200, comm: 'bash', utime: 20, stime: 0},
         {pid: 300, comm: 'Web Content', utime: 200, stime: 10},
+        {pid: 400, comm: 'idlehog', utime: 1, stime: 0, rssPages: 8000, skipStatm: false},
+        {pid: 500, comm: 'ghost', utime: 80, stime: 0, skipStatm: true},
     ];
 
     for (const proc of processes) {
         const dir = `${root}/${proc.pid}`;
         GLib.mkdir_with_parents(dir, 0o755);
         GLib.file_set_contents(`${dir}/stat`, `${statLine(proc)}\n`);
-        GLib.file_set_contents(`${dir}/statm`, `200 ${proc.pid === 100 ? 400 : 50} 10 1 0 20 0\n`);
+        if (!proc.skipStatm) {
+            const pages = proc.rssPages ?? (proc.pid === 100 ? 400 : 50);
+            GLib.file_set_contents(`${dir}/statm`, `200 ${pages} 10 1 0 20 0\n`);
+        }
     }
 
     return root;
@@ -126,6 +131,18 @@ test('statm RSS is the second field, in pages', () => {
     assertEqual(parseStatm('100 50 10 1 0 20 0', 4096), 50 * 4096);
     assertNull(parseStatm('100'));
     assertNull(parseStatm(null));
+});
+
+test('statm uses resident pages, not virtual size', () => {
+    // First field is virtual size. Reading it would inflate every RSS figure.
+    assertEqual(parseStatm('9999 50 0 0 0 0 0', 4096), 50 * 4096);
+});
+
+test('statm rejects junk the same way stat does', () => {
+    assertNull(parseStatm(''));
+    assertNull(parseStatm('foo bar'));
+    assertNull(parseStatm('100 -1 0', 4096));
+    assertNull(parseStatm('100 50', 0));
 });
 
 test('kernel threads are recognised from PF_KTHREAD', () => {
@@ -196,15 +213,35 @@ test('the table skips kernel threads and ranks the fixture by ticks', () => {
     table.setLimit(8);
     const rows = table.top();
 
-    assertEqual(rows.length, 4, 'kthreadd should be absent');
+    assertEqual(rows.length, 6, 'kthreadd should be absent');
     assertEqual(rows[0].label, 'firefox');
     assertEqual(rows[1].label, 'Web Content');
     assertEqual(rows[2].label, 'systemd');
-    assertEqual(rows[3].label, 'bash');
+    assertEqual(rows[3].label, 'ghost');
+    assertEqual(rows[4].label, 'bash');
+    assertEqual(rows[5].label, 'idlehog');
     assertEqual(rows[0].text, '--%', 'no baseline yet');
     assertEqual(rows.find(row => row.pid === 1).endable, false, 'pid 1');
     assertEqual(rows.find(row => row.pid === 100).endable, true);
     assertEqual(rows[0].memory, '1.6MiB', 'firefox RSS from fixture statm');
+    assertEqual(rows.find(row => row.pid === 500).memory, '--', 'missing statm');
+});
+
+test('RSS does not change CPU ranking', () => {
+    // idlehog has a huge resident set and almost no ticks. Ranking by RSS
+    // would put it first, which is not what the table claims to show.
+    const table = new ProcessTable({procRoot: fixtureRoot, selfPid: 999});
+    const rows = table.top();
+    assertEqual(rows[rows.length - 1].label, 'idlehog');
+});
+
+test('setLimit caps how many rows the table returns', () => {
+    const table = new ProcessTable({procRoot: fixtureRoot, selfPid: 999});
+    table.setLimit(2);
+    const rows = table.top();
+    assertEqual(rows.length, 2);
+    assertEqual(rows[0].label, 'firefox');
+    assertEqual(rows[1].label, 'Web Content');
 });
 
 test('the second sample reports a real share against the aggregate', () => {
@@ -233,6 +270,7 @@ test('the live /proc has userspace processes with names', () => {
     for (const row of rows) {
         assert(typeof row.label === 'string' && row.label.length > 0, 'label');
         assert(typeof row.pid === 'number' && row.pid > 0, 'pid');
+        assert(typeof row.memory === 'string' && row.memory.length > 0, 'memory');
         assert(row.pid !== 2, 'kthreadd should not appear');
     }
 });
